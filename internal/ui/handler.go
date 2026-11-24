@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"path"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -20,6 +19,7 @@ import (
 	"github.com/ieyoukan/ryudai-tools/internal/academic"
 	"github.com/ieyoukan/ryudai-tools/internal/config"
 	"github.com/ieyoukan/ryudai-tools/internal/db"
+	"github.com/ieyoukan/ryudai-tools/internal/lms"
 	"github.com/ieyoukan/ryudai-tools/internal/provider/webclass"
 	"github.com/ieyoukan/ryudai-tools/internal/session"
 )
@@ -31,14 +31,17 @@ type Handler struct {
 	store         session.Store
 	db            *db.DB
 	academic      *academic.Service
-	webClassLocks sync.Map // username -> *sync.Mutex
+	// lms は WebClass のサービス層。利用者ごとの順番待ち・再ログイン・時間の上限・エラーの文言を受け持つ。
+	lms *lms.Service
 }
 
 func NewHandler(cfg *config.Config, store session.Store, database *db.DB, svc *academic.Service) *Handler {
 	if svc == nil {
 		svc = academic.New(cfg.KyomuBaseURL, nil)
 	}
-	return &Handler{cfg: cfg, store: store, db: database, academic: svc}
+	h := &Handler{cfg: cfg, store: store, db: database, academic: svc}
+	h.lms = lms.New(cfg.WebClassBaseURL, store, h.envPassword)
+	return h
 }
 
 func (h *Handler) sessionFromCookie(r *http.Request) *session.Entry {
@@ -50,36 +53,9 @@ func (h *Handler) sessionFromCookie(r *http.Request) *session.Entry {
 	if !ok {
 		return nil
 	}
-	h.renewWebClassCookie(entry)
+	h.lms.RenewIfExpiring(r.Context(), entry)
 	return entry
 }
-
-// renewWebClassCookie は WCAC の期限が近いとき、.env の本人に限り
-// 再ログインして Cookie を更新する。WebClass の keep-alive は Cookie を
-// 再発行しないため、この方式でのみ7日間の期限を更新できる。
-func (h *Handler) renewWebClassCookie(entry *session.Entry) {
-	mu := h.webClassLock(entry.Username)
-	mu.Lock()
-	defer mu.Unlock()
-	current, ok := h.store.Get(entry.SessionID)
-	if !ok {
-		return
-	}
-	entry.Cookies = current.Cookies
-	expiresAt, hasExpiry := session.WebClassCookieExpiresAt(entry.Cookies)
-	if !hasExpiry || time.Until(expiresAt) > session.WebClassRenewBefore {
-		return
-	}
-	if _, ok := h.envPassword(entry.Username); !ok {
-		return
-	}
-	if err := h.loginWebClass(entry); err != nil {
-		log.Printf("WebClass Cookie 更新失敗: %v", err)
-	}
-}
-
-// errNoPassword は .env の本人以外で、再ログインできないことを示す（公開サーバーはパスワードを保存しない）。
-var errNoPassword = errors.New("WebClass のセッションが切れました。ログアウトして再ログインしてください")
 
 // envPassword は .env の WEBCLASS_USERNAME 本人のパスワードを返す。他のユーザーは false。
 // 自分でデプロイして .env に自分のアカウントを書いた人だけが自動再ログインを使える。
@@ -88,71 +64,6 @@ func (h *Handler) envPassword(username string) (string, bool) {
 		return "", false
 	}
 	return h.cfg.WebClassPassword, true
-}
-
-func (h *Handler) webClassLock(username string) *sync.Mutex {
-	mu, _ := h.webClassLocks.LoadOrStore(username, &sync.Mutex{})
-	return mu.(*sync.Mutex)
-}
-
-// loginWebClass は .env の本人のときだけ、そのパスワードで WebClass に再ログインする。
-func (h *Handler) loginWebClass(entry *session.Entry) error {
-	password, ok := h.envPassword(entry.Username)
-	if !ok {
-		return errNoPassword
-	}
-	client, err := webclass.New(h.cfg.WebClassBaseURL)
-	if err != nil {
-		return err
-	}
-	client.HTTPClient.Timeout = 30 * time.Second
-	cookies, err := client.Login(h.cfg.WebClassUsername, password)
-	if err != nil {
-		return fmt.Errorf("WebClass の再ログインに失敗しました: %w", err)
-	}
-	if !h.store.UpdateCookies(entry.SessionID, cookies) {
-		return fmt.Errorf("ログインセッションが無効になりました")
-	}
-	entry.Cookies = cookies
-	return nil
-}
-
-// WebClassClient recovers a rejected upstream session independently of cookie expiry.
-func (h *Handler) WebClassClient(entry *session.Entry) (*webclass.Client, error) {
-	client, err := webclass.NewFromCookies(h.cfg.WebClassBaseURL, entry.Cookies)
-	if err != nil {
-		return nil, err
-	}
-	failedCookies := entry.Cookies
-	client.SetSessionRecovery(func() ([]*http.Cookie, error) {
-		mu := h.webClassLock(entry.Username)
-		mu.Lock()
-		defer mu.Unlock()
-		current, ok := h.store.Get(entry.SessionID)
-		if !ok {
-			return nil, fmt.Errorf("ログインセッションが無効になりました")
-		}
-		// Another request may already have recovered this session.
-		if sameCookieValues(current.Cookies, failedCookies) {
-			if err := h.loginWebClass(current); err != nil {
-				return nil, err
-			}
-		}
-		return current.Cookies, nil
-	})
-	return client, nil
-}
-
-func sameCookieValues(a, b []*http.Cookie) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i].Name != b[i].Name || a[i].Value != b[i].Value {
-			return false
-		}
-	}
-	return true
 }
 
 func cookieExpiryLabel(cookies []*http.Cookie) string {
@@ -191,42 +102,33 @@ func (h *Handler) CurrentUser(r *http.Request) string {
 // HandleLogin は POST /login を処理する。
 // WebClass の ID・パスワードでログインする。パスワードは保存せず、各システムの Cookie だけを保存する。
 func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
-	wcPassword := r.FormValue("password")
 	next := safeNext(r.FormValue("next"))
 	fail := func(msg string) {
 		h.render(w, "login", LoginData{Error: msg, Next: next, ForOAuth: strings.HasPrefix(next, "/oauth/")})
 	}
 
 	// 大学のメールアドレスは @ より前を ID にし、それ以外のメールアドレスは大学のシステムへ送る前に止める。
-	wcUsername, err := webclass.NormalizeUsername(r.FormValue("username"))
-	if err != nil {
+	password := r.FormValue("password")
+	username, cookies, err := h.lms.Login(r.Context(), r.FormValue("username"), password)
+	switch {
+	case errors.Is(err, webclass.ErrEmailAsUsername):
 		fail(err.Error())
 		return
-	}
-	if wcUsername == "" || wcPassword == "" {
+	case err != nil && (r.FormValue("username") == "" || password == ""):
 		fail("ユーザー名とパスワードを入力してください")
 		return
-	}
-
-	// WebClass にログイン
-	client, err := webclass.New(h.cfg.WebClassBaseURL)
-	if err != nil {
-		fail("クライアント作成失敗")
-		return
-	}
-	cookies, err := client.Login(wcUsername, wcPassword)
-	if err != nil {
+	case err != nil:
 		fail("ユーザー名またはパスワードが違います")
 		return
 	}
 
 	// 教務システムにも同じパスワードでログインし、Cookie だけを保存する。
 	// 失敗しても WebClass の機能は使えるので、ログイン自体は続ける。
-	if err := h.academic.StartSession(wcUsername, wcPassword); err != nil {
-		log.Printf("教務システムへのログイン失敗 (%s): %v", wcUsername, err)
+	if err := h.academic.StartSession(username, password); err != nil {
+		log.Printf("教務システムへのログイン失敗 (%s): %v", username, err)
 	}
 
-	sessionID := h.store.Create(wcUsername, cookies)
+	sessionID := h.store.Create(username, cookies)
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookie,
 		Value:    sessionID,
@@ -274,20 +176,11 @@ func (h *Handler) ShowCourses(w http.ResponseWriter, r *http.Request) {
 	}
 
 	base := BaseData{Username: entry.Username}
-
-	defer session.UseWebClass(entry.Username)()
-	client, err := h.WebClassClient(entry)
+	courses, err := h.lms.Courses(r.Context(), entry)
 	if err != nil {
-		h.render(w, "courses", CoursesData{BaseData: base, Error: "クライアント作成に失敗しました"})
+		h.render(w, "courses", CoursesData{BaseData: base, Error: lms.Describe("コース一覧", err)})
 		return
 	}
-
-	courses, err := client.FetchTimetable()
-	if err != nil {
-		h.render(w, "courses", CoursesData{BaseData: base, Error: "コース一覧の取得に失敗しました: " + err.Error()})
-		return
-	}
-
 	h.render(w, "courses", CoursesData{
 		BaseData: base,
 		Days:     timetableDays,
@@ -308,45 +201,32 @@ func (h *Handler) ShowContents(w http.ResponseWriter, r *http.Request) {
 	if courseName == "" {
 		courseName = courseID
 	}
-
 	base := BaseData{Username: entry.Username}
 
-	defer session.UseWebClass(entry.Username)()
-	client, err := h.WebClassClient(entry)
+	// 資料は試験・レポート・アンケートを除いたもの。ファイルはページ描画をブロックしないよう、
+	// 遷移後に /files.json から取得する（CourseFilesJSON）。
+	cc, err := h.lms.CourseContents(r.Context(), entry, courseID)
 	if err != nil {
-		h.render(w, "contents", ContentsData{BaseData: base, CourseName: courseName, Error: "クライアント作成に失敗しました"})
+		h.render(w, "contents", ContentsData{BaseData: base, CourseID: courseID, CourseName: courseName, WebClassURL: webClassCourseURL(courseID), Error: lms.Describe("資料の一覧", err)})
 		return
 	}
-
-	contents, err := client.FetchCourseContents(courseID)
-	if err != nil {
-		h.render(w, "contents", ContentsData{BaseData: base, CourseName: courseName, Error: "コンテンツ一覧の取得に失敗しました: " + err.Error()})
-		return
-	}
-
-	// contents は資料だけ（試験・レポート・アンケートは provider 側で除外済み）。
-	// ファイルはページ描画をブロックしないよう、遷移後に /files.json から
-	// 非同期・逐次で取得する（下の CourseFilesJSON）。ここでは一覧のみ用意する。
 	data := ContentsData{
 		BaseData:    base,
 		CourseID:    courseID,
 		CourseName:  courseName,
-		Contents:    contents,
+		Contents:    cc.Materials,
 		WebClassURL: webClassCourseURL(courseID),
 	}
-
-	now := time.Now()
-	attItems, err := client.FetchAttendanceList(courseID)
-	if err != nil {
-		data.AttendanceError = err.Error()
+	if cc.AttendanceErr != nil {
+		data.AttendanceError = lms.Describe("出席確認", cc.AttendanceErr)
 	} else {
-		rows := make([]AttendanceRow, len(attItems))
-		for i, it := range attItems {
+		now := time.Now()
+		rows := make([]AttendanceRow, len(cc.Attendance))
+		for i, it := range cc.Attendance {
 			rows[i] = AttendanceRow{Name: it.Name, Status: it.Status, WindowOpen: it.WindowOpen, WindowClose: it.WindowClose, IsOpen: it.IsOpenAt(now)}
 		}
 		data.Attendance = rows
 	}
-
 	h.render(w, "contents", data)
 }
 
@@ -364,35 +244,17 @@ func (h *Handler) ShowFiles(w http.ResponseWriter, r *http.Request) {
 	if contentName == "" {
 		contentName = contentID
 	}
-	courseName := r.URL.Query().Get("course")
-
-	base := BaseData{Username: entry.Username}
-
-	defer session.UseWebClass(entry.Username)()
-	client, err := h.WebClassClient(entry)
-	if err != nil {
-		h.render(w, "files", FilesData{BaseData: base, ContentName: contentName, Error: "クライアント作成に失敗しました"})
-		return
-	}
-
 	data := FilesData{
-		BaseData:    base,
+		BaseData:    BaseData{Username: entry.Username},
 		CourseID:    courseID,
-		CourseName:  courseName,
+		CourseName:  r.URL.Query().Get("course"),
 		ContentID:   contentID,
 		ContentName: contentName,
 		WebClassURL: webClassCourseURL(courseID),
 	}
-	files, err := client.FetchContentFiles(courseID, contentID)
-	if errors.Is(err, webclass.ErrNotMaterial) {
-		data.Error = err.Error() + "。WebClass で直接開いてください。"
-		h.render(w, "files", data)
-		return
-	}
+	files, err := h.lms.ContentFiles(r.Context(), entry, courseID, contentID)
 	if err != nil {
-		data.Error = "ファイル一覧の取得に失敗しました: " + err.Error()
-		h.render(w, "files", data)
-		return
+		data.Error = lms.Describe("ファイルの一覧", err)
 	}
 	data.Files = files
 	h.render(w, "files", data)
@@ -435,10 +297,10 @@ func (h *Handler) Download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer session.UseWebClass(entry.Username)()
-	client, err := h.WebClassClient(entry)
+	client, release, err := h.lms.Open(r.Context(), entry)
+	defer release()
 	if err != nil {
-		http.Error(w, "クライアント作成に失敗しました", http.StatusInternalServerError)
+		http.Error(w, lms.Describe("WebClass への接続", err), http.StatusBadGateway)
 		return
 	}
 
@@ -496,10 +358,10 @@ func (h *Handler) DownloadCourseZip(w http.ResponseWriter, r *http.Request) {
 		courseName = courseID
 	}
 
-	defer session.UseWebClass(entry.Username)()
-	client, err := h.WebClassClient(entry)
+	client, release, err := h.lms.Open(r.Context(), entry)
+	defer release()
 	if err != nil {
-		http.Error(w, "クライアント作成に失敗しました", http.StatusInternalServerError)
+		http.Error(w, lms.Describe("WebClass への接続", err), http.StatusBadGateway)
 		return
 	}
 
@@ -583,10 +445,10 @@ func (h *Handler) CourseFilesJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	courseID := chi.URLParam(r, "courseID")
-	defer session.UseWebClass(entry.Username)()
-	client, err := h.WebClassClient(entry)
+	client, release, err := h.lms.Open(r.Context(), entry)
+	defer release()
 	if err != nil {
-		http.Error(w, "クライアント作成に失敗しました", http.StatusInternalServerError)
+		http.Error(w, lms.Describe("WebClass への接続", err), http.StatusBadGateway)
 		return
 	}
 
@@ -642,10 +504,10 @@ func (h *Handler) CourseSummary(w http.ResponseWriter, r *http.Request) {
 		courseName = courseID
 	}
 
-	defer session.UseWebClass(entry.Username)()
-	client, err := h.WebClassClient(entry)
+	client, release, err := h.lms.Open(r.Context(), entry)
+	defer release()
 	if err != nil {
-		http.Error(w, "クライアント作成に失敗しました", http.StatusInternalServerError)
+		http.Error(w, lms.Describe("WebClass への接続", err), http.StatusBadGateway)
 		return
 	}
 
@@ -876,33 +738,12 @@ func (h *Handler) ShowMessages(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-
-	data := MessagesData{
-		BaseData: BaseData{Username: entry.Username},
-	}
-
-	defer session.UseWebClass(entry.Username)()
-	client, err := h.WebClassClient(entry)
+	data := MessagesData{BaseData: BaseData{Username: entry.Username}}
+	msgs, unread, err := h.lms.Inbox(r.Context(), entry)
 	if err != nil {
-		data.Error = "クライアント作成に失敗しました"
-		h.render(w, "messages", data)
-		return
+		data.Error = lms.Describe("メッセージ", err)
 	}
-
-	msgs, err := client.FetchInboxMessages(entry.Username) // 自分のIDを除外
-	if err != nil {
-		data.Error = "メッセージ取得に失敗しました: " + err.Error()
-		h.render(w, "messages", data)
-		return
-	}
-
-	data.Messages = msgs
-
-	// 未読数を API でも取得（notCourse=true でコース通知を除外）
-	if cnt, err := client.FetchUnreadMessageCount(true); err == nil {
-		data.UnreadCnt = cnt
-	}
-
+	data.Messages, data.UnreadCnt = msgs, unread
 	h.render(w, "messages", data)
 }
 
