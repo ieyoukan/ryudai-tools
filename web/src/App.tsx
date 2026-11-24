@@ -3,9 +3,11 @@ import { Route, Switch, useLocation } from 'wouter'
 
 import { AppShell } from '@/components/AppShell'
 import { LoadingBlock } from '@/components/page'
+import { retryImport } from '@/lib/stale-build'
 
 // ページごとに分けて読み込む（スマホで最初の表示を軽くする）
-const page = <K extends string>(load: () => Promise<Record<K, ComponentType>>, name: K) => lazy(() => load().then((m) => ({ default: m[name] })))
+// デプロイ後に前の版の画面から移動して読み込めなかったときは、再読み込みして新しい版にする（lib/stale-build）
+const page = <K extends string>(load: () => Promise<Record<K, ComponentType>>, name: K) => lazy(retryImport(() => load().then((m) => ({ default: m[name] }))))
 const LoginPage = page(() => import('@/pages/LoginPage'), 'LoginPage')
 const CoursesPage = page(() => import('@/pages/CoursesPage'), 'CoursesPage')
 const ContentsPage = page(() => import('@/pages/ContentsPage'), 'ContentsPage')
