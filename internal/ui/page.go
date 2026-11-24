@@ -6,6 +6,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/ieyoukan/ryudai-tools/internal/routes"
 )
 
 // 画面（web/ の React）は、各ページのデータをこのパッケージのハンドラーから JSON で受け取る。
@@ -68,25 +70,7 @@ func (h *Handler) PageAPI() http.Handler {
 			next.ServeHTTP(&pageWriter{ResponseWriter: w}, req)
 		})
 	})
-	r.Get("/me", h.ShowMe)
-	r.Get("/login", h.ShowLogin)
-	r.Post("/login", h.HandleLogin)
-	r.Post("/logout", h.HandleLogout)
-	r.Get("/terms", h.ShowTerms)
-	r.Get("/privacy", h.ShowPrivacy)
-	r.Get("/courses", h.ShowCourses)
-	r.Get("/courses/{courseID}", h.ShowContents)
-	r.Get("/courses/{courseID}/contents/{contentID}", h.ShowFiles)
-	r.Get("/messages", h.ShowMessages)
-	r.Get("/settings", h.ShowSettings)
-	r.Post("/settings/api-tokens", h.HandleCreateAPIToken)
-	r.Post("/settings/api-tokens/delete", h.HandleDeleteAPIToken)
-	r.Post("/settings/oauth-grants/revoke", h.HandleRevokeOAuthGrant)
-	r.Get("/registration", h.ShowRegistration)
-	r.Get("/registration/status", h.ShowRegistrationStatus)
-	r.Get("/registration/candidates", h.ShowCandidates)
-	r.Get("/syllabus", h.ShowSyllabusSearch)
-	r.Get("/syllabus/{year}/{code}", h.ShowSyllabusDetail)
+	routes.Register(r, h.PageRoutes())
 	return r
 }
 

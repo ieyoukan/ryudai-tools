@@ -264,20 +264,7 @@ AI には例えば「今の登録期間を確認して、卒業要件に足り�
 
 ### JSON API
 
-| メソッド | パス | 認証 |
-|---|---|---|
-| GET | `/api/academic/calendar?date=&days=&all=1` | 不要 |
-| GET | `/api/academic/timetable?year=&term=&faculty=&course=&lecture_codes=` | 不要 |
-| GET | `/api/academic/rules?enter_year=&faculty=&course=&keyword=` | 任意 |
-| GET | `/api/academic/required?enter_year=&faculty=&course=&all_courses=1` | 任意 |
-| GET | `/api/me/required?enter_year=` | Bearer トークン / ログイン Cookie |
-| GET | `/api/syllabus/search?subject=&faculty=&term=&day=&period=&limit=&details=` | 任意 |
-| GET | `/api/syllabus/options?faculty=` | 不要 |
-| GET | `/api/syllabus/{year}/{講義コード}` | 任意 |
-| GET | `/api/me/registration` | Bearer トークン / ログイン Cookie |
-| GET | `/api/me/candidates?slots=月2,木3&scopes=general,own&keywords=発音,会話&with_syllabus=1&offset=0&limit=30` | 同上 |
-| GET | `/api/me/graduation?include_grades=1` | 同上 |
-| POST | `/api/me/plan`（`{"lecture_codes": [...]}`） | 同上 |
+経路・パラメータ・認証・応答の型の一覧は [docs/api.md](docs/api.md) にあります（経路の表から自動生成し、CI でずれを検出）。
 
 ### 検証
 

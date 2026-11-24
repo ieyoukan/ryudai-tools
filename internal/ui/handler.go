@@ -27,10 +27,10 @@ import (
 const sessionCookie = "ryudai_tools_session"
 
 type Handler struct {
-	cfg           *config.Config
-	store         session.Store
-	db            *db.DB
-	academic      *academic.Service
+	cfg      *config.Config
+	store    session.Store
+	db       *db.DB
+	academic *academic.Service
 	// lms は WebClass のサービス層。利用者ごとの順番待ち・再ログイン・時間の上限・エラーの文言を受け持つ。
 	lms *lms.Service
 }

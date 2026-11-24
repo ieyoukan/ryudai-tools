@@ -23,6 +23,7 @@ import (
 	"github.com/ieyoukan/ryudai-tools/internal/mcp"
 	"github.com/ieyoukan/ryudai-tools/internal/middleware"
 	"github.com/ieyoukan/ryudai-tools/internal/oauth"
+	"github.com/ieyoukan/ryudai-tools/internal/routes"
 	"github.com/ieyoukan/ryudai-tools/internal/session"
 	"github.com/ieyoukan/ryudai-tools/internal/ui"
 	"github.com/ieyoukan/ryudai-tools/internal/webapp"
@@ -184,10 +185,7 @@ func main() {
 	r.Get("/downloads/{name}", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/downloads", http.StatusMovedPermanently)
 	})
-	r.Get("/courses/{courseID}/files.json", uiHandler.CourseFilesJSON)
-	r.Get("/courses/{courseID}/files.zip", uiHandler.DownloadCourseZip)
-	r.Get("/courses/{courseID}/summary", uiHandler.CourseSummary)
-	r.Get("/download", uiHandler.Download)
+	routes.Register(r, uiHandler.FileRoutes())
 
 	// MCP（Streamable HTTP）と OAuth
 	r.Handle("/mcp", mcpServer)
@@ -213,27 +211,8 @@ func main() {
 			json.NewEncoder(w).Encode(map[string]string{"status": "ok", "version": version})
 		})
 
-
-		// 教務システム: シラバスは公開、/api/me は Bearer トークンまたはセッションで認証
-		r.Get("/api/academic/calendar", apiAcademic.Calendar)
-		r.Get("/api/academic/timetable", apiAcademic.Timetable)
-		r.Get("/api/academic/rules", apiAcademic.StudyRules)
-		r.Get("/api/academic/required", apiAcademic.RequiredCourses)
-		r.Get("/api/me/required", apiAcademic.MyRequiredCourses)
-		r.Get("/api/syllabus/search", apiAcademic.SearchSyllabus)
-		r.Get("/api/syllabus/options", apiAcademic.SyllabusOptions)
-		r.Get("/api/syllabus/{year}/{code}", apiAcademic.Syllabus)
-		r.Get("/api/me/registration", apiAcademic.MyRegistration)
-		r.Get("/api/me/schedule", apiAcademic.MySchedule)
-		r.Get("/api/me/lectures/{year}/{code}", apiAcademic.MyLecture)
-		r.Get("/api/me/candidates", apiAcademic.MyCandidates)
-		r.Post("/api/me/plan", apiAcademic.MyPlan)
-		r.Get("/api/me/graduation", apiAcademic.MyGraduation)
-		r.Get("/api/me/plan/suggestions", apiAcademic.PlanSuggestions)
-		r.Post("/api/me/plan/items", apiAcademic.AddPlanItem)
-		r.Delete("/api/me/plan/items", apiAcademic.DeletePlan)
-		r.Delete("/api/me/plan/items/{id}", apiAcademic.DeletePlanItem)
-		r.Put("/api/me/lecture-categories", apiAcademic.SaveLectureCategories)
+		// 教務システム（JSON API）。経路の一覧は docs/api.md（handler.Routes から生成）
+		routes.Register(r, apiAcademic.Routes())
 
 	})
 

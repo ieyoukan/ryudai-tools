@@ -40,8 +40,6 @@ func RefreshSession(store session.Store) func(http.Handler) http.Handler {
 	}
 }
 
-
-
 // TokenResolver は API トークンからユーザー名を引く（db.DB が実装）。
 type TokenResolver interface {
 	UserForAPIToken(token string) (string, error)

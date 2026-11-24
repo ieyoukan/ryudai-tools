@@ -32,11 +32,17 @@ run = "bun install && bun run dev"
 description = "Go の構造体から画面用の TypeScript の型（web/src/api/gen）を作る"
 run = "go run github.com/gzuidhof/tygo@v0.2.21 generate"
 
+[tasks.gen-api-doc]
+description = "経路の表（internal/handler/routes.go・internal/ui/routes.go）から docs/api.md を作り直す"
+run = "UPDATE_API_DOC=1 go test ./internal/apidoc -run TestAPIDocIsUpToDate -count=1"
+
 [tasks.check]
 description = "push・デプロイ前の確認（Go の vet とテスト、Go と画面の型のずれ、画面の型チェック）。CI もこれだけを実行する"
 run = '''
 #!/usr/bin/env bash
 set -euo pipefail
+unformatted=$(gofmt -l cmd internal)
+[ -z "$unformatted" ] || { echo "gofmt が必要なファイル: $unformatted（gofmt -w cmd internal）" >&2; exit 1; }
 go vet ./...
 go test ./...
 go run github.com/gzuidhof/tygo@v0.2.21 generate
