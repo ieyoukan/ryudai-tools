@@ -275,6 +275,7 @@ func (h *Handler) ShowCourses(w http.ResponseWriter, r *http.Request) {
 
 	base := BaseData{Username: entry.Username}
 
+	defer session.UseWebClass(entry.Username)()
 	client, err := h.WebClassClient(entry)
 	if err != nil {
 		h.render(w, "courses", CoursesData{BaseData: base, Error: "クライアント作成に失敗しました"})
@@ -310,6 +311,7 @@ func (h *Handler) ShowContents(w http.ResponseWriter, r *http.Request) {
 
 	base := BaseData{Username: entry.Username}
 
+	defer session.UseWebClass(entry.Username)()
 	client, err := h.WebClassClient(entry)
 	if err != nil {
 		h.render(w, "contents", ContentsData{BaseData: base, CourseName: courseName, Error: "クライアント作成に失敗しました"})
@@ -366,6 +368,7 @@ func (h *Handler) ShowFiles(w http.ResponseWriter, r *http.Request) {
 
 	base := BaseData{Username: entry.Username}
 
+	defer session.UseWebClass(entry.Username)()
 	client, err := h.WebClassClient(entry)
 	if err != nil {
 		h.render(w, "files", FilesData{BaseData: base, ContentName: contentName, Error: "クライアント作成に失敗しました"})
@@ -432,6 +435,7 @@ func (h *Handler) Download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	defer session.UseWebClass(entry.Username)()
 	client, err := h.WebClassClient(entry)
 	if err != nil {
 		http.Error(w, "クライアント作成に失敗しました", http.StatusInternalServerError)
@@ -492,6 +496,7 @@ func (h *Handler) DownloadCourseZip(w http.ResponseWriter, r *http.Request) {
 		courseName = courseID
 	}
 
+	defer session.UseWebClass(entry.Username)()
 	client, err := h.WebClassClient(entry)
 	if err != nil {
 		http.Error(w, "クライアント作成に失敗しました", http.StatusInternalServerError)
@@ -578,6 +583,7 @@ func (h *Handler) CourseFilesJSON(w http.ResponseWriter, r *http.Request) {
 	}
 
 	courseID := chi.URLParam(r, "courseID")
+	defer session.UseWebClass(entry.Username)()
 	client, err := h.WebClassClient(entry)
 	if err != nil {
 		http.Error(w, "クライアント作成に失敗しました", http.StatusInternalServerError)
@@ -636,6 +642,7 @@ func (h *Handler) CourseSummary(w http.ResponseWriter, r *http.Request) {
 		courseName = courseID
 	}
 
+	defer session.UseWebClass(entry.Username)()
 	client, err := h.WebClassClient(entry)
 	if err != nil {
 		http.Error(w, "クライアント作成に失敗しました", http.StatusInternalServerError)
@@ -874,6 +881,7 @@ func (h *Handler) ShowMessages(w http.ResponseWriter, r *http.Request) {
 		BaseData: BaseData{Username: entry.Username},
 	}
 
+	defer session.UseWebClass(entry.Username)()
 	client, err := h.WebClassClient(entry)
 	if err != nil {
 		data.Error = "クライアント作成に失敗しました"

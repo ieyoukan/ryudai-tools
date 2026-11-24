@@ -35,6 +35,7 @@ func (h *FilesHandler) ListCourses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	defer session.UseWebClass(entry.Username)()
 	client, err := h.webClassClient(entry)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "failed to create scraper client")
@@ -67,6 +68,7 @@ func (h *FilesHandler) ListCourseContents(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	defer session.UseWebClass(entry.Username)()
 	client, err := h.webClassClient(entry)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "failed to create scraper client")
@@ -101,6 +103,7 @@ func (h *FilesHandler) ListContentFiles(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	defer session.UseWebClass(entry.Username)()
 	client, err := h.webClassClient(entry)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "failed to create scraper client")
@@ -140,6 +143,7 @@ func (h *FilesHandler) Download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	defer session.UseWebClass(entry.Username)()
 	client, err := h.webClassClient(entry)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "failed to create scraper client")
