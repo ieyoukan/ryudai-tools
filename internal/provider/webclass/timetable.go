@@ -1,7 +1,9 @@
 package webclass
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"regexp"
 	"strconv"
 	"strings"
@@ -25,9 +27,15 @@ func (c *Client) FetchTimetable() ([]CourseInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("トップページ取得: %w", err)
 	}
-	defer resp.Body.Close()
-
-	doc, err := html.Parse(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return nil, fmt.Errorf("トップページ読み取り: %w", err)
+	}
+	if err := checkLoggedIn(body); err != nil {
+		return nil, err
+	}
+	doc, err := html.Parse(bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("HTML パース: %w", err)
 	}

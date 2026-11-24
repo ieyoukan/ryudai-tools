@@ -9,7 +9,8 @@ import (
 	"testing"
 )
 
-const materialsCoursePage = `<html><body>
+const materialsCoursePage = `<html><head><title>テスト科目[2026後期][試験001] - WebClass</title></head><body>
+<a href="/webclass/course.php/C1/manage">コース C1</a>
 <section data-contents-id="m1" data-contents-name="第1回 資料"><div class="cl-contentsList_categoryLabel">資料</div></section>
 <section data-contents-id="t1" data-contents-name="中間試験"><div class="cl-contentsList_categoryLabel">試験</div></section>
 <section data-contents-id="r1" data-contents-name="課題1"><div class="cl-contentsList_categoryLabel">レポート</div></section>

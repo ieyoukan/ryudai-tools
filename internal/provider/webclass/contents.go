@@ -55,12 +55,15 @@ func (c *Client) FetchCourseContents(courseID string) ([]ContentInfo, error) {
 		return nil, fmt.Errorf("コースページ読み取り: %w", err)
 	}
 
+	if err := checkCoursePage(body, courseID); err != nil {
+		return nil, err
+	}
 	doc, err := xhtml.Parse(bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("HTML パース: %w", err)
 	}
 
-	var materials []ContentInfo
+	materials := []ContentInfo{}
 	ids := make(map[string]bool)
 	for _, ci := range parseContentSections(doc) {
 		if ci.IsMaterial() {

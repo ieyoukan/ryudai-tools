@@ -57,6 +57,9 @@ func (c *Client) FetchAttendanceList(courseID string) ([]AttendanceItem, error) 
 	if err != nil {
 		return nil, err
 	}
+	if err := checkCoursePage(courseBody, courseID); err != nil {
+		return nil, err
+	}
 
 	path := fmt.Sprintf("course.php/%s/attendance", courseID)
 	if acs := extractACSToken(courseBody); acs != "" {
@@ -70,6 +73,9 @@ func (c *Client) FetchAttendanceList(courseID string) ([]AttendanceItem, error) 
 	defer resp2.Body.Close()
 	body, err := io.ReadAll(resp2.Body)
 	if err != nil {
+		return nil, err
+	}
+	if err := checkLoggedIn(body); err != nil {
 		return nil, err
 	}
 

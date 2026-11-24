@@ -43,6 +43,9 @@ func (c *Client) FetchInboxMessages(excludeSelfID string) ([]Message, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := checkLoggedIn(body); err != nil {
+		return nil, err
+	}
 
 	return parseMessageTable(body, c.BaseHost(), excludeSelfID), nil
 }
