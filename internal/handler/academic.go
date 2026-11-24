@@ -10,9 +10,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/ieyoukan/daigaku-hack/internal/academic"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/kyomu"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/university"
+	"github.com/ieyoukan/ryudai-tools/internal/academic"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/kyomu"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/university"
 )
 
 // AcademicHandler は教務システム（シラバス・履修）の JSON API。

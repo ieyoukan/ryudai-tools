@@ -46,8 +46,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ieyoukan/daigaku-hack/internal/academic"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/kyomu"
+	"github.com/ieyoukan/ryudai-tools/internal/academic"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/kyomu"
 )
 
 func main() {

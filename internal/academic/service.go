@@ -16,9 +16,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ieyoukan/daigaku-hack/internal/db"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/kyomu"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/university"
+	"github.com/ieyoukan/ryudai-tools/internal/db"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/kyomu"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/university"
 )
 
 // ErrNoCredentials は教務システムのセッションが無く、再ログインもできないことを示す。

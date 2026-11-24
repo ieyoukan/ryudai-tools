@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/ieyoukan/daigaku-hack/internal/session"
+	"github.com/ieyoukan/ryudai-tools/internal/session"
 )
 
 func TestRefreshSessionRenewsActiveCookie(t *testing.T) {

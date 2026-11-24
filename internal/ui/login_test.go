@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ieyoukan/daigaku-hack/internal/academic"
-	"github.com/ieyoukan/daigaku-hack/internal/config"
-	"github.com/ieyoukan/daigaku-hack/internal/db"
+	"github.com/ieyoukan/ryudai-tools/internal/academic"
+	"github.com/ieyoukan/ryudai-tools/internal/config"
+	"github.com/ieyoukan/ryudai-tools/internal/db"
 )
 
 func TestLoginDoesNotKeepPassword(t *testing.T) {
@@ -85,5 +85,59 @@ func TestPageAPIRejectsPostWithoutHeader(t *testing.T) {
 	h.PageAPI().ServeHTTP(w, r)
 	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"redirect":"/login"`) {
 		t.Fatalf("logout = %d %s", w.Code, w.Body.String())
+	}
+}
+
+// 大学のメールアドレスは @ より前を ID としてログインし、それ以外のメールアドレスは WebClass に送らずに止める。
+func TestLoginWithEmailAddress(t *testing.T) {
+	var posted []string
+	webclassServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			fmt.Fprint(w, `<input type="hidden" name="token" value="csrf-token">`)
+			return
+		}
+		r.ParseForm()
+		posted = append(posted, r.PostForm.Get("username"))
+		http.SetCookie(w, &http.Cookie{Name: "WCAC", Value: "Authenticated", Path: "/"})
+	}))
+	defer webclassServer.Close()
+	kyomuServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer kyomuServer.Close()
+	database, err := db.Open(filepath.Join(t.TempDir(), "app.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	store := database.NewSessionStore()
+	h := NewHandler(&config.Config{WebClassBaseURL: webclassServer.URL}, store, database, academic.New(kyomuServer.URL, nil))
+
+	login := func(username string) *httptest.ResponseRecorder {
+		values := url.Values{"username": {username}, "password": {"secret-password"}}
+		r := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(values.Encode()))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		w := httptest.NewRecorder()
+		h.HandleLogin(w, r)
+		return w
+	}
+
+	w := login("e000001@cs.u-ryukyu.ac.jp")
+	if w.Code != http.StatusSeeOther || len(posted) != 1 || posted[0] != "e000001" {
+		t.Fatalf("university address: status %d, posted %v, body %s", w.Code, posted, w.Body.String())
+	}
+	var sid string
+	for _, c := range w.Result().Cookies() {
+		if c.Name == sessionCookie {
+			sid = c.Value
+		}
+	}
+	if entry, ok := store.Get(sid); !ok || entry.Username != "e000001" {
+		t.Fatalf("session user = %+v, ok %t", entry, ok)
+	}
+
+	w = login("student@gmail.com")
+	if len(posted) != 1 || !strings.Contains(w.Body.String(), "メールアドレスではなく") {
+		t.Fatalf("other address reached WebClass: posted %v, body %s", posted, w.Body.String())
 	}
 }

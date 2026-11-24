@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ieyoukan/daigaku-hack/internal/db"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/kyomu"
+	"github.com/ieyoukan/ryudai-tools/internal/db"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/kyomu"
 )
 
 type memCategories map[string]db.LectureCategory

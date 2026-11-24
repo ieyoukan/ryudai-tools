@@ -7,8 +7,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/ieyoukan/daigaku-hack/internal/db"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/kyomu"
+	"github.com/ieyoukan/ryudai-tools/internal/db"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/kyomu"
 )
 
 // CategoryStore は今期の登録科目の科目区分を保存する（db.DB が実装）。

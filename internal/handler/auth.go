@@ -5,9 +5,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/ieyoukan/daigaku-hack/internal/config"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/webclass"
-	"github.com/ieyoukan/daigaku-hack/internal/session"
+	"github.com/ieyoukan/ryudai-tools/internal/config"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/webclass"
+	"github.com/ieyoukan/ryudai-tools/internal/session"
 )
 
 type AuthHandler struct {
@@ -51,6 +51,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	username, err := webclass.NormalizeUsername(req.Username)
+	if err != nil {
+		h.writeJSON(w, http.StatusBadRequest, errorResponse{Error: err.Error()})
+		return
+	}
+	req.Username = username
 	if req.Username == "" || req.Password == "" {
 		h.writeJSON(w, http.StatusBadRequest, errorResponse{Error: "username and password are required"})
 		return

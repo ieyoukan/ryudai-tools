@@ -9,6 +9,20 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
+
+const emailError = 'メールアドレスではなく、WebClass のユーザー名（琉大ID）を入力してください。'
+
+/** メールアドレスが入力されたときの扱い。サーバーの webclass.NormalizeUsername と同じ規則（判定はサーバーが行う）。 */
+function emailHint(value: string): { id: string } | { error: string } | null {
+  const s = value.normalize('NFKC').trim()
+  const at = s.lastIndexOf('@')
+  if (at < 0) return null
+  const local = s.slice(0, at).trim()
+  const domain = s.slice(at + 1).trim().toLowerCase()
+  if (local && !local.includes('@') && (domain === 'u-ryukyu.ac.jp' || domain.endsWith('.u-ryukyu.ac.jp'))) return { id: local }
+  return { error: emailError }
+}
 
 export function LoginPage() {
   const search = location.search
@@ -16,10 +30,18 @@ export function LoginPage() {
   const qc = useQueryClient()
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [username, setUsername] = useState('')
+  const hint = emailHint(username)
   const next = data?.Next ?? new URLSearchParams(search).get('next') ?? '/courses'
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    if (hint && 'error' in hint) {
+      // 大学のシステムへ送らずに止める（失敗したログインの試行を増やさない）。理由は入力欄の下に出ている
+      setError('')
+      ;(e.currentTarget.elements.namedItem('username') as HTMLInputElement | null)?.focus()
+      return
+    }
     const form = new FormData(e.currentTarget)
     setBusy(true)
     setError('')
@@ -47,8 +69,13 @@ export function LoginPage() {
           {data?.ForOAuth && <p className="mb-4 text-sm text-muted-foreground">AI アプリ（ChatGPT など）と連携するために、WebClass の ID・パスワードでログインしてください。</p>}
           <form className="space-y-4" onSubmit={submit} aria-busy={busy}>
             <div className="space-y-1.5">
-              <Label htmlFor="username">ユーザー名（WebClass の ID）</Label>
-              <Input id="username" name="username" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} required className="h-11 md:h-9" />
+              <Label htmlFor="username">ユーザー名（琉大ID）</Label>
+              <Input id="username" name="username" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} required className="h-11 md:h-9"
+                value={username} onChange={(e) => setUsername(e.target.value)} placeholder="例: e000000" aria-describedby="username-help" aria-invalid={hint !== null && 'error' in hint} />
+              <p id="username-help" className={cn('text-xs', hint && 'error' in hint ? 'text-critical' : 'text-muted-foreground')}>
+                {hint === null ? 'WebClass にログインするときの ID です。メールアドレスではありません。'
+                  : 'error' in hint ? hint.error : `メールアドレスの @ より前の「${hint.id}」でログインします。`}
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">パスワード</Label>

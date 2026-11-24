@@ -1,4 +1,4 @@
-module github.com/ieyoukan/daigaku-hack
+module github.com/ieyoukan/ryudai-tools
 
 go 1.25.0
 

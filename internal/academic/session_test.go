@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/ieyoukan/daigaku-hack/internal/provider/kyomu"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/kyomu"
 )
 
 type memCookies map[string][]*http.Cookie

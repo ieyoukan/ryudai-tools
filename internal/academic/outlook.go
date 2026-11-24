@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ieyoukan/daigaku-hack/internal/db"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/kyomu"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/university"
+	"github.com/ieyoukan/ryudai-tools/internal/db"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/kyomu"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/university"
 )
 
 // PlanStore は卒業までの履修計画を返す（db.DB が実装）。

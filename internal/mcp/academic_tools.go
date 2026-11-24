@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ieyoukan/daigaku-hack/internal/academic"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/kyomu"
+	"github.com/ieyoukan/ryudai-tools/internal/academic"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/kyomu"
 )
 
 const instructions = `琉球大学の教務情報を読むツール群。登録の追加・削除は本人が教務システムで行う。

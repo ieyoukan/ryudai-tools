@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ieyoukan/daigaku-hack/internal/db"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/kyomu"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/university"
+	"github.com/ieyoukan/ryudai-tools/internal/db"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/kyomu"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/university"
 )
 
 func fp(v float64) *float64 { return &v }

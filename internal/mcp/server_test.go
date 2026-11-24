@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ieyoukan/daigaku-hack/internal/academic"
+	"github.com/ieyoukan/ryudai-tools/internal/academic"
 )
 
 func testServer() *Server {

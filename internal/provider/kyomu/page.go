@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/net/html"
 
-	"github.com/ieyoukan/daigaku-hack/internal/webclient"
+	"github.com/ieyoukan/ryudai-tools/internal/webclient"
 )
 
 // page はパース済みの 1 ページ。ASP.NET の要素 ID で値を引けるよう索引を持つ。

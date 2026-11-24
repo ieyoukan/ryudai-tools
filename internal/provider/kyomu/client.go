@@ -16,7 +16,7 @@ import (
 
 	"golang.org/x/net/html"
 
-	"github.com/ieyoukan/daigaku-hack/internal/webclient"
+	"github.com/ieyoukan/ryudai-tools/internal/webclient"
 )
 
 // DefaultBaseURL は教務システムのポータル URL。

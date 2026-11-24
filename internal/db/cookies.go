@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	appcrypto "github.com/ieyoukan/daigaku-hack/internal/crypto"
+	appcrypto "github.com/ieyoukan/ryudai-tools/internal/crypto"
 )
 
 // SetCookieKey は保存する Cookie の暗号化鍵（AES-256、32 バイト）を設定する。

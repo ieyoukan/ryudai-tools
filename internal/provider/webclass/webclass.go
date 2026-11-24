@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/ieyoukan/daigaku-hack/internal/provider"
-	"github.com/ieyoukan/daigaku-hack/internal/webclient"
+	"github.com/ieyoukan/ryudai-tools/internal/provider"
+	"github.com/ieyoukan/ryudai-tools/internal/webclient"
 )
 
 // providerID / providerName は登録・表示に使う識別子。

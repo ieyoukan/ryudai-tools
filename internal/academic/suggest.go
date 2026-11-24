@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ieyoukan/daigaku-hack/internal/provider/kyomu"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/kyomu"
 )
 
 // 区分ごとに出す候補の数。

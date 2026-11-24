@@ -9,7 +9,7 @@ import (
 
 	xhtml "golang.org/x/net/html"
 
-	"github.com/ieyoukan/daigaku-hack/internal/webclient"
+	"github.com/ieyoukan/ryudai-tools/internal/webclient"
 )
 
 // Message は WebClass 受信箱の1メッセージ。

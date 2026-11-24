@@ -36,7 +36,7 @@ func Load() *Config {
 		Port:            "8080",
 		WebClassBaseURL: "https://webclass.cc.u-ryukyu.ac.jp/webclass",
 		KyomuBaseURL:    "https://tiglon.jim.u-ryukyu.ac.jp/portal",
-		DBPath:          "./data/daihack.db",
+		DBPath:          defaultDBPath(),
 		PeriodTimes: map[int]string{
 			1: "08:30",
 			2: "10:20",
@@ -61,12 +61,26 @@ func Load() *Config {
 	return cfg
 }
 
+// envFilePaths は設定ファイルを探す順。最初に見つかった 1 つだけを読む。
+// daihack は旧名（daigaku-hack）の場所で、既存の環境のために残している。
 func envFilePaths() []string {
-	paths := []string{"/etc/daihack.env"}
+	paths := []string{"/etc/ryudai-tools.env", "/etc/daihack.env"}
 	if home, err := os.UserHomeDir(); err == nil {
-		paths = append(paths, home+"/.config/daihack/.env")
+		paths = append(paths, home+"/.config/ryudai-tools/.env", home+"/.config/daihack/.env")
 	}
 	return append(paths, ".env")
+}
+
+// defaultDBPath は DB_PATH が無いときの SQLite の場所。旧名の DB（./data/daihack.db）だけがある
+// 既存の環境では、保存済みのデータを使い続けるためにそちらを使う。
+func defaultDBPath() string {
+	const current, legacy = "./data/ryudai-tools.db", "./data/daihack.db"
+	if _, err := os.Stat(current); err != nil {
+		if _, err := os.Stat(legacy); err == nil {
+			return legacy
+		}
+	}
+	return current
 }
 
 func applyEnvVars(cfg *Config) {

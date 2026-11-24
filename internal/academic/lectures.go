@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ieyoukan/daigaku-hack/internal/provider/kyomu"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/kyomu"
 )
 
 // LectureAvailability distinguishes missing information from a known zero.

@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ieyoukan/daigaku-hack/internal/webclient"
+	"github.com/ieyoukan/ryudai-tools/internal/webclient"
 )
 
 // navTextURLRe は txtbk_show_chapter.php の js-config JSON から text_url を抽出する。

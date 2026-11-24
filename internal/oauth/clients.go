@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ieyoukan/daigaku-hack/internal/db"
+	"github.com/ieyoukan/ryudai-tools/internal/db"
 )
 
 const maxClientMetadata = 64 << 10

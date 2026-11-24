@@ -4,8 +4,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=daihack
-EnvironmentFile=/etc/daihack.env
+User=ryudai-tools
+EnvironmentFile=/etc/ryudai-tools.env
 ExecStart=/usr/local/bin/ryudai-tools
 Restart=on-failure
 RestartSec=5

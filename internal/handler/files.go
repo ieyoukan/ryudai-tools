@@ -10,10 +10,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/ieyoukan/daigaku-hack/internal/config"
-	"github.com/ieyoukan/daigaku-hack/internal/middleware"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/webclass"
-	"github.com/ieyoukan/daigaku-hack/internal/session"
+	"github.com/ieyoukan/ryudai-tools/internal/config"
+	"github.com/ieyoukan/ryudai-tools/internal/middleware"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/webclass"
+	"github.com/ieyoukan/ryudai-tools/internal/session"
 )
 
 type FilesHandler struct {

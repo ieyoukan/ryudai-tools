@@ -15,17 +15,17 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
-	"github.com/ieyoukan/daigaku-hack/internal/academic"
-	"github.com/ieyoukan/daigaku-hack/internal/config"
-	appcrypto "github.com/ieyoukan/daigaku-hack/internal/crypto"
-	"github.com/ieyoukan/daigaku-hack/internal/db"
-	"github.com/ieyoukan/daigaku-hack/internal/handler"
-	"github.com/ieyoukan/daigaku-hack/internal/mcp"
-	"github.com/ieyoukan/daigaku-hack/internal/middleware"
-	"github.com/ieyoukan/daigaku-hack/internal/oauth"
-	"github.com/ieyoukan/daigaku-hack/internal/session"
-	"github.com/ieyoukan/daigaku-hack/internal/ui"
-	"github.com/ieyoukan/daigaku-hack/internal/webapp"
+	"github.com/ieyoukan/ryudai-tools/internal/academic"
+	"github.com/ieyoukan/ryudai-tools/internal/config"
+	appcrypto "github.com/ieyoukan/ryudai-tools/internal/crypto"
+	"github.com/ieyoukan/ryudai-tools/internal/db"
+	"github.com/ieyoukan/ryudai-tools/internal/handler"
+	"github.com/ieyoukan/ryudai-tools/internal/mcp"
+	"github.com/ieyoukan/ryudai-tools/internal/middleware"
+	"github.com/ieyoukan/ryudai-tools/internal/oauth"
+	"github.com/ieyoukan/ryudai-tools/internal/session"
+	"github.com/ieyoukan/ryudai-tools/internal/ui"
+	"github.com/ieyoukan/ryudai-tools/internal/webapp"
 )
 
 // version はリリースビルド時に -ldflags "-X main.version=..." で埋め込まれる。

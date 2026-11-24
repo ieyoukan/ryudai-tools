@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ieyoukan/daigaku-hack/internal/provider/kyomu"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/kyomu"
 )
 
 // LectureDigest は講義 1 件の要点。科目名だけでは中身が分からない講義を、AI が一覧で比べられる粒度にまとめる。

@@ -3,7 +3,7 @@ package ui
 import (
 	"errors"
 	"fmt"
-	"github.com/ieyoukan/daigaku-hack/internal/academic"
+	"github.com/ieyoukan/ryudai-tools/internal/academic"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ieyoukan/daigaku-hack/internal/config"
-	"github.com/ieyoukan/daigaku-hack/internal/db"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/webclass"
-	"github.com/ieyoukan/daigaku-hack/internal/session"
+	"github.com/ieyoukan/ryudai-tools/internal/config"
+	"github.com/ieyoukan/ryudai-tools/internal/db"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/webclass"
+	"github.com/ieyoukan/ryudai-tools/internal/session"
 )
 
 func TestRenewWebClassCookieReplacesCookieNearExpiry(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/ieyoukan/daigaku-hack/internal/session"
+	"github.com/ieyoukan/ryudai-tools/internal/session"
 )
 
 // cookieRecord は Cookie の Name/Value/Path のみを保存する（認証に必要な最小限）。

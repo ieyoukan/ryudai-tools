@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ieyoukan/daigaku-hack/internal/academic"
+	"github.com/ieyoukan/ryudai-tools/internal/academic"
 )
 
 func addUniversityTools(s *Server, svc *academic.Service) {

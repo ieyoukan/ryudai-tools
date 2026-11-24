@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ieyoukan/daigaku-hack/internal/provider/kyomu"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/kyomu"
 )
 
 var ErrScheduleQuery = errors.New("date は YYYY-MM-DD、days は 1〜31 で指定してください")

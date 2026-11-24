@@ -17,11 +17,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/ieyoukan/daigaku-hack/internal/academic"
-	"github.com/ieyoukan/daigaku-hack/internal/config"
-	"github.com/ieyoukan/daigaku-hack/internal/db"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/webclass"
-	"github.com/ieyoukan/daigaku-hack/internal/session"
+	"github.com/ieyoukan/ryudai-tools/internal/academic"
+	"github.com/ieyoukan/ryudai-tools/internal/config"
+	"github.com/ieyoukan/ryudai-tools/internal/db"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/webclass"
+	"github.com/ieyoukan/ryudai-tools/internal/session"
 )
 
 const sessionCookie = "ryudai_tools_session"
@@ -191,13 +191,18 @@ func (h *Handler) CurrentUser(r *http.Request) string {
 // HandleLogin は POST /login を処理する。
 // WebClass の ID・パスワードでログインする。パスワードは保存せず、各システムの Cookie だけを保存する。
 func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
-	wcUsername := r.FormValue("username")
 	wcPassword := r.FormValue("password")
 	next := safeNext(r.FormValue("next"))
 	fail := func(msg string) {
 		h.render(w, "login", LoginData{Error: msg, Next: next, ForOAuth: strings.HasPrefix(next, "/oauth/")})
 	}
 
+	// 大学のメールアドレスは @ より前を ID にし、それ以外のメールアドレスは大学のシステムへ送る前に止める。
+	wcUsername, err := webclass.NormalizeUsername(r.FormValue("username"))
+	if err != nil {
+		fail(err.Error())
+		return
+	}
 	if wcUsername == "" || wcPassword == "" {
 		fail("ユーザー名とパスワードを入力してください")
 		return

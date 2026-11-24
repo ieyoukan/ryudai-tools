@@ -11,7 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/ieyoukan/daigaku-hack/internal/academic"
+	"github.com/ieyoukan/ryudai-tools/internal/academic"
 )
 
 type scheduleCookies struct{}

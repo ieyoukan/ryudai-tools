@@ -19,7 +19,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/ieyoukan/daigaku-hack/internal/db"
+	"github.com/ieyoukan/ryudai-tools/internal/db"
 )
 
 const (

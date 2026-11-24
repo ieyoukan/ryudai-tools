@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ieyoukan/daigaku-hack/internal/provider/kyomu"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/university"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/kyomu"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/university"
 )
 
 // 空きコマとして扱う範囲（平日 1〜5 限）。

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/ieyoukan/daigaku-hack/internal/db"
+	"github.com/ieyoukan/ryudai-tools/internal/db"
 )
 
 type tokenResponse struct {

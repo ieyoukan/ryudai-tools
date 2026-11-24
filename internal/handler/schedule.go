@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/ieyoukan/daigaku-hack/internal/academic"
+	"github.com/ieyoukan/ryudai-tools/internal/academic"
 )
 
 // MySchedule はセッション / Bearer 認証済み本人の実日付の予定を返す。

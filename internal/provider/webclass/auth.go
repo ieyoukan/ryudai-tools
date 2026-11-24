@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/net/html"
 
-	"github.com/ieyoukan/daigaku-hack/internal/webclient"
+	"github.com/ieyoukan/ryudai-tools/internal/webclient"
 )
 
 // FetchLoginToken はログインページを取得して隠し CSRF トークンを抽出する。

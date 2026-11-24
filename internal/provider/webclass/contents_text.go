@@ -13,7 +13,7 @@ import (
 	lpdf "github.com/ledongthuc/pdf"
 	xhtml "golang.org/x/net/html"
 
-	"github.com/ieyoukan/daigaku-hack/internal/webclient"
+	"github.com/ieyoukan/ryudai-tools/internal/webclient"
 )
 
 // pdfCache はPDFテキスト抽出結果のメモリキャッシュ。

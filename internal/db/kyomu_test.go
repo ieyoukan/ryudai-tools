@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ieyoukan/daigaku-hack/internal/session"
+	"github.com/ieyoukan/ryudai-tools/internal/session"
 )
 
 func TestKyomuCookiesRoundTrip(t *testing.T) {

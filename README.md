@@ -71,7 +71,7 @@ mise run dev
 画面をビルドせずに `go build` した場合も起動はでき、`/app/` は「画面がビルドされていません」と返す。WebClass の検証は `mise run debug -- timetable`。利用できるタスクは `mise tasks` で確認できる。
 `.env` は mise が読み込むため、検証 CLI でも認証情報を利用できる。
 
-`http://localhost:8080` でブラウザアクセス。SQLite DB（`./data/daihack.db`）はアプリが自動で作成する。
+`http://localhost:8080` でブラウザアクセス。SQLite DB（`./data/ryudai-tools.db`）はアプリが自動で作成する（旧名の `./data/daihack.db` だけがある場合はそちらを使う）。
 
 ログインセッションは最後の利用から7日間保持し、利用するたびに期限を延長する。ブラウザを閉じても期間内はログインを維持し、ログアウトするとセッションを削除する。
 公開サーバーはパスワードを保存しない。ログイン時に入力したパスワードは WebClass と教務情報システムへのログインにだけ使い、
@@ -104,7 +104,7 @@ docker compose up --build -d
 | `KYOMU_BASE_URL` | 教務情報システムのポータル URL | `https://tiglon.jim.u-ryukyu.ac.jp/portal` |
 | `PUBLIC_BASE_URL` | 外から見たこのアプリの URL。OAuth（ChatGPT 連携）の issuer / resource に使う | リクエストの Host から組み立て |
 | `LEGACY_HOSTS` | 旧ドメイン（カンマ区切り）。ここへのアクセスは `PUBLIC_BASE_URL` の同じパスへ 308 で転送する（POST もそのまま） | なし |
-| `DB_PATH` | SQLite ファイルパス | `./data/daihack.db` |
+| `DB_PATH` | SQLite ファイルパス | `./data/ryudai-tools.db` |
 | `PERIOD_1` 〜 `PERIOD_8` | 各時限の開始時刻（任意） | 琉大標準時刻 |
 
 `WEBCLASS_USERNAME` と `WEBCLASS_PASSWORD` を設定すると、指定した本人のアカウントについてのみ、WebClass と教務のセッションを再ログインで更新できます。
@@ -295,7 +295,7 @@ mise run test-live                                 # 実サーバーへの結合
 
 ## 配布とデプロイ
 
-[GitHub Releases](https://github.com/ieyoukan/daigaku-hack/releases/latest) から、macOS・Linux・Windows（amd64 / arm64）用のアーカイブと `checksums.txt` を取得できます。GitHub Actions が `v*` タグのソースを検証し、React 画面を埋め込んだGoバイナリを配布します。アーカイブにはセットアップ用の `.env.example` とライセンスが入ります。
+[GitHub Releases](https://github.com/ieyoukan/ryudai-tools/releases/latest) から、macOS・Linux・Windows（amd64 / arm64）用のアーカイブと `checksums.txt` を取得できます。GitHub Actions が `v*` タグのソースを検証し、React 画面を埋め込んだGoバイナリを配布します。アーカイブにはセットアップ用の `.env.example` とライセンスが入ります。
 
 サーバーでは対象環境のアーカイブを展開し、SHA-256を確認してから `ryudai-tools` を起動します。既存環境を更新する場合は、`.env` と SQLite・暗号鍵があるデータディレクトリを保持してください。GitHubへ直接接続できないサーバーには、手元で取得・検証したアーカイブをSSHなどで転送できます。公開サービスの内部サーバー向け運用手順は運営用リポジトリで管理しています。
 

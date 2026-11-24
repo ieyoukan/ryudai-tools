@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ieyoukan/daigaku-hack/internal/provider/kyomu"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/university"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/kyomu"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/university"
 )
 
 func (s *Service) StudyRules(ctx context.Context, user string, year int, faculty, course, keyword string) (*university.StudyRules, error) {

@@ -24,7 +24,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ieyoukan/daigaku-hack/internal/provider/webclass"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/webclass"
 )
 
 const defaultBase = "https://webclass.cc.u-ryukyu.ac.jp/webclass"

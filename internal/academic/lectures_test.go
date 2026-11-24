@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ieyoukan/daigaku-hack/internal/provider/kyomu"
-	"github.com/ieyoukan/daigaku-hack/internal/provider/university"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/kyomu"
+	"github.com/ieyoukan/ryudai-tools/internal/provider/university"
 )
 
 func TestConfirmedRegistrationStillReadsCandidateCounts(t *testing.T) {
