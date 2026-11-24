@@ -9,7 +9,7 @@ import type { CoursesData, SyllabusDetailData } from '@/api/gen/ui'
 import { useMe, usePage } from '@/api/page'
 import { BackLink } from '@/components/BackLink'
 import { CampusMap } from '@/components/CampusMap'
-import { EmptyState, ErrorState, LoadingBlock, PageHeader } from '@/components/page'
+import { EmptyState, ErrorState, LoadingBlock, Notice, PageHeader, SectionTitle } from '@/components/page'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -229,9 +229,13 @@ function WebClassView({ year, code, title }: { year: number; code: string; title
   if (isPending) return <LoadingBlock label="WebClass のコースを探しています" />
   if (error) return <ErrorState message={error.message} onRetry={() => refetch()} />
   if (data?.Error) return <ErrorState message={data.Error} onRetry={() => refetch()} />
-  const courses = (data?.Rows ?? []).flatMap((r) => r.Cells.flatMap((c) => (c ?? []).filter((x): x is NonNullable<typeof x> => !!x)))
+  // 時間割の表から重複なくコースを集める（複数コマの授業は同じコースが何度も出る）
+  const courses = [...new Map((data?.Rows ?? []).flatMap((r) => r.Cells.flatMap((c) => (c ?? []).filter((x): x is NonNullable<typeof x> => !!x))).map((c) => [c.id, c])).values()]
   const id = webClassCourseID(year, code)
   const course = courses.find((c) => c.id === id) ?? courses.find((c) => c.name.startsWith(title + '['))
+  // 学科ごとに「発電工学[2026後期][電気336]」「発電工学[2026後期][電気985]」のようにコースが分かれ、
+  // 資料が片方にだけ置かれていることがある。科目名と学期が同じで科目番号だけ違うコースも並べて出す。
+  const others = course ? courses.filter((c) => c.id !== course.id && courseBaseName(c.name) === courseBaseName(course.name)) : []
   if (!course) {
     return (
       <EmptyState>
@@ -240,5 +244,22 @@ function WebClassView({ year, code, title }: { year: number; code: string; title
       </EmptyState>
     )
   }
-  return <CourseContents courseID={course.id} name={course.name} />
+  if (others.length === 0) return <CourseContents courseID={course.id} name={course.name} />
+  return (
+    <div className="space-y-8">
+      <Notice tone="info">WebClass に同じ授業のコースが {others.length + 1} つあります（科目番号違い）。資料がどちらか一方にだけ置かれていることがあるので、すべて表示しています。</Notice>
+      <CourseContents courseID={course.id} name={course.name} />
+      {others.map((c) => (
+        <section key={c.id} className="space-y-2 border-t pt-6">
+          <SectionTitle>同じ授業の別のコース</SectionTitle>
+          <CourseContents courseID={c.id} name={c.name} />
+        </section>
+      ))}
+    </div>
+  )
+}
+
+/** 「発電工学[2026後期][電気336]」から末尾の科目番号を除いた「発電工学[2026後期]」（科目番号が無い名前はそのまま）。 */
+function courseBaseName(name: string): string {
+  return /\[[^\]]*\]\[[^\]]*\]$/.test(name) ? name.replace(/\[[^\]]*\]$/, '') : name
 }
