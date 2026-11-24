@@ -48,7 +48,9 @@ mise run dev
 
 確認はコマンドで行い、CI は保険として最小限にしている。
 
-- `mise run check`: push・デプロイ前の確認（`go vet`、`go test`、Go の構造体と画面の型のずれ、画面の型チェック）。数秒〜十数秒
+- `mise run check`: push・デプロイ前の確認（`gofmt`、`go vet`、`go test`、Go の構造体と画面の型のずれ、`docs/api.md` と経路の表のずれ、画面の型チェック）。数秒〜十数秒
+- `mise run dev-fake`: 偽の WebClass（架空のコースと資料）につないで :8090 で起動する。本物のアカウントなしで画面を確かめられる（ID `e000001` / パスワード `password`。教務システムの機能は使えない）
+- `mise run gen-api-doc`: 経路の表（`internal/handler/routes.go`・`internal/ui/routes.go`）から `docs/api.md` を作り直す
 - `mise run install-hooks`: `git push` の前に `mise run check` を実行するフックを入れる（クローンごとに 1 回）
 - `mise run dist -- v0.2.0`: GitHub Releases と同じ配布アーカイブを手元で作る
 - `mise run smoke`: `BASE_URL`（既定 `http://127.0.0.1:8080`）で、期待する版（`EXPECT_VERSION`。既定は手元の `git describe`）が動き、ログインが必要な画面・API が守られ、画面が読み込むファイルが配信されているかを確かめる。例: `BASE_URL=https://ryudai-tools.example.com EXPECT_VERSION=v0.2.0 mise run smoke`
@@ -293,16 +295,19 @@ mise run test-live                                 # 実サーバーへの結合
 ```
 cmd/ryudai-tools/   エントリポイント（公開サーバー）
 cmd/kyomu-debug/    教務システムスクレイパーの検証 CLI
+cmd/fake-webclass/  手元の開発用の偽の WebClass（mise run dev-fake）
 internal/
   provider/kyomu/   教務システム（TIGLON）スクレイパー
   academic/         履修支援（シラバス検索キャッシュ・空きコマ候補・プランチェック）
   mcp/              MCP サーバー
-  provider/webclass/ WebClass HTML スクレイパー
+  provider/webclass/ WebClass HTML スクレイパー（webclasstest/ はテスト用の偽の WebClass）
   ui/               Web画面用のJSON API
+  lms/              WebClass のサービス層（利用者ごとの順番待ち・再ログイン・時間の上限・エラーの文言）
+  routes/           経路の表（docs/api.md の生成元）
   db/               SQLite（セッション・設定・OAuth）
   config/           環境変数ロード
   session/          セッションストア
-  handler/          REST API ハンドラ（レガシー）
+  handler/          JSON API（教務システム・履修計画）
   middleware/        認証ミドルウェア
 ```
 

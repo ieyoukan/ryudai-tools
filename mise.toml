@@ -14,6 +14,23 @@ lsof -ti:"$port" | xargs kill 2>/dev/null || true
 go run ./cmd/ryudai-tools
 '''
 
+[tasks.dev-fake]
+description = "偽の WebClass（架空のコースと資料）につないで手元で起動する。ID e000001 / パスワード password でログインできる（教務システムの機能は使えない）"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+fake_addr=127.0.0.1:18081
+go run ./cmd/fake-webclass -addr "$fake_addr" &
+fake=$!
+trap 'kill "$fake" 2>/dev/null || true' EXIT
+until curl -fsS -o /dev/null "http://$fake_addr/webclass/login.php" 2>/dev/null; do sleep 0.5; done
+mkdir -p data
+echo "アプリ: http://127.0.0.1:${DEV_FAKE_PORT:-8090}  （偽の WebClass につないでいます）"
+PORT="${DEV_FAKE_PORT:-8090}" DB_PATH=./data/fake-webclass.db \
+  WEBCLASS_BASE_URL="http://$fake_addr/webclass" KYOMU_BASE_URL="http://$fake_addr/portal" \
+  go run ./cmd/ryudai-tools
+'''
+
 [tasks.web]
 description = "画面（web/）を型チェックしてビルドし、Go に埋め込む場所（internal/webapp/dist）に出力する"
 dir = "web"
