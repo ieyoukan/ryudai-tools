@@ -1,0 +1,36 @@
+name: ci
+
+# 手元の mise run check（push 前のフックでも実行）と同じ確認を、main への push で 1 回だけ流す保険。
+# main への push と pull request を対象にし、新しい変更が来たら前の実行を止める。
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    paths-ignore: ["**.md", "docs/**", "assets/**", ".github/workflows/release.yml"]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/.bun/install/cache
+          key: check-${{ runner.os }}-${{ hashFiles('go.sum', 'web/bun.lock') }}
+          restore-keys: check-${{ runner.os }}-
+      - run: mise run check

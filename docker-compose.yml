@@ -1,0 +1,10 @@
+services:
+  app:
+    build: .
+    ports:
+      - "${PORT:-8080}:8080"
+    env_file:
+      - .env      # .env.example をコピーして .env を作成すること
+    volumes:
+      - ./data:/data
+    restart: unless-stopped

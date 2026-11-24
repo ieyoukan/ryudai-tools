@@ -1,0 +1,12 @@
+web/node_modules
+internal/webapp/dist
+data
+**/*.db
+**/*.db-*
+**/*.sqlite*
+**/.env
+**/.env.*
+.git
+.agents
+.codex
+.aws

@@ -1,0 +1,170 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * デザインの基準
+ * - ベースカラー: 無彩色のグレー（背景・面・罫線・文字）。面は影を使わず 1px の罫線で区切る。
+ * - アクセントカラー: 青 1 色（ボタン・選択中・リンク）。ほかの色は状態（達成・注意・不合格）だけに使い、必ずアイコンと文字を添える。
+ * - グラフ: 色は区分（科目のまとまり）ごとに 7 色 + その他（グレー）。AWS のコスト画面のように、量の多い区分から色を割り当てる。
+ *   7 色は色覚の違いがあっても隣どうしを見分けられることを、ライト・ダークそれぞれの面の色で検証済み。
+ *   修得・今期の登録・計画は色ではなく塗り方で分ける: 修得 = 塗りつぶし、今期の登録 = 薄い塗り、計画 = 斜線。
+ */
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Geist Variable', system-ui, -apple-system, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic UI', sans-serif;
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --color-track: var(--track);
+    --color-good: var(--good);
+    --color-warning: var(--warning);
+    --color-critical: var(--critical);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+    color-scheme: light;
+    --radius: 0.5rem;
+    /* ベース */
+    --background: #f6f6f5;
+    --foreground: #0b0b0b;
+    --card: #ffffff;
+    --card-foreground: #0b0b0b;
+    --popover: #ffffff;
+    --popover-foreground: #0b0b0b;
+    --muted: #f1f1ef;
+    --muted-foreground: #6b6a66;
+    --secondary: #f1f1ef;
+    --secondary-foreground: #0b0b0b;
+    --accent: #f1f1ef;
+    --accent-foreground: #0b0b0b;
+    --border: #e4e4e1;
+    --input: #d9d9d5;
+    /* アクセント */
+    --primary: #1c63b4;
+    --primary-foreground: #ffffff;
+    --ring: #1c63b4;
+    /* グラフの区分の色（量の多い順に 1〜7、8 番目以降はその他） */
+    --cat-1: #2a78d6;
+    --cat-2: #eb6834;
+    --cat-3: #1baf7a;
+    --cat-4: #eda100;
+    --cat-5: #e87ba4;
+    --cat-6: #008300;
+    --cat-7: #6250d6;
+    --cat-other: #a3a29b;
+    --track: #ececea;
+    /* 状態（アイコンと文字を必ず添える） */
+    --good: #006300;
+    --warning: #8a5a00;
+    --critical: #d03b3b;
+    --destructive: #d03b3b;
+}
+
+.dark {
+    color-scheme: dark;
+    --background: #0d0d0d;
+    --foreground: #f0efec;
+    --card: #171717;
+    --card-foreground: #f0efec;
+    --popover: #1c1c1c;
+    --popover-foreground: #f0efec;
+    --muted: #222221;
+    --muted-foreground: #a3a29b;
+    --secondary: #222221;
+    --secondary-foreground: #f0efec;
+    --accent: #222221;
+    --accent-foreground: #f0efec;
+    --border: #2c2c2a;
+    --input: #383835;
+    --primary: #75aff8;
+    --primary-foreground: #0d0d0d;
+    --ring: #75aff8;
+    --cat-1: #3987e5;
+    --cat-2: #d95926;
+    --cat-3: #199e70;
+    --cat-4: #c98500;
+    --cat-5: #d55181;
+    --cat-6: #008300;
+    --cat-7: #9085e9;
+    --cat-other: #6b6a66;
+    --track: #262625;
+    --good: #0ca30c;
+    --warning: #fab219;
+    --critical: #e66767;
+    --destructive: #e66767;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  button:not(:disabled), [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  html {
+    @apply font-sans;
+    -webkit-tap-highlight-color: transparent;
+    scroll-padding-block: 5rem 7rem;
+  }
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+}
+
+/* タッチ操作では密度より押しやすさを優先し、入力時の自動拡大も防ぐ。 */
+@media (pointer: coarse) {
+  [data-slot="button"] { min-height: 2.75rem; }
+  [data-slot="button"][data-size^="icon"] { min-width: 2.75rem; }
+  input, select, textarea { font-size: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* グラフの塗り方。--c に区分の色を入れて使う */
+@layer components {
+  .fill-earned { background: var(--c); }
+  .fill-registered { background: color-mix(in oklab, var(--c) 42%, var(--card)); }
+  .fill-planned {
+    background: repeating-linear-gradient(135deg, var(--c) 0 2px, color-mix(in oklab, var(--c) 16%, var(--card)) 2px 5px);
+  }
+  @media (forced-colors: active) {
+    .fill-earned, .fill-registered, .fill-planned { forced-color-adjust: none; }
+  }
+}

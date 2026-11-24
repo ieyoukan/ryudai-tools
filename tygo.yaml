@@ -1,0 +1,86 @@
+# Go の構造体から画面（web/）用の TypeScript の型を作る: mise run gen-types
+# パッケージをまたぐ型は type_mappings で、生成したほかのファイルの型に結びつける。
+packages:
+  - path: "github.com/ieyoukan/daigaku-hack/internal/ui"
+    output_path: "web/src/api/gen/ui.ts"
+    include_files: ["handler.go", "academic.go"]
+    frontmatter: |
+      import type * as academic from "./academic"
+      import type * as db from "./db"
+      import type * as kyomu from "./kyomu"
+      import type * as webclass from "./webclass"
+    type_mappings:
+      time.Time: "string"
+      academic.Overview: "academic.Overview"
+      academic.PlanCheck: "academic.PlanCheck"
+      academic.CandidateResult: "academic.CandidateResult"
+      academic.SearchResult: "academic.SearchResult"
+      academic.LectureDetails: "academic.LectureDetails"
+      db.APIToken: "db.APIToken"
+      db.OAuthGrant: "db.OAuthGrant"
+      kyomu.RegisteredLecture: "kyomu.RegisteredLecture"
+      kyomu.RegistrationStatus: "kyomu.RegistrationStatus"
+      kyomu.SearchParams: "kyomu.SearchParams"
+      kyomu.SearchOptions: "kyomu.SearchOptions"
+      webclass.CourseInfo: "webclass.CourseInfo"
+      webclass.ContentInfo: "webclass.ContentInfo"
+      webclass.FileInfo: "webclass.FileInfo"
+      webclass.Message: "webclass.Message"
+  - path: "github.com/ieyoukan/daigaku-hack/internal/academic"
+    output_path: "web/src/api/gen/academic.ts"
+    include_files: ["graduation.go", "outlook.go", "suggest.go", "required.go", "curriculum.go", "advisor.go", "syllabus.go", "lectures.go", "digest.go", "schedule.go", "lecture_schedule.go", "campus.go"]
+    frontmatter: |
+      import type * as db from "./db"
+      import type * as kyomu from "./kyomu"
+      import type * as university from "./university"
+    type_mappings:
+      time.Time: "string"
+      db.PlanItem: "db.PlanItem"
+      kyomu.Grade: "kyomu.Grade"
+      kyomu.ScheduleEvent: "kyomu.ScheduleEvent"
+      kyomu.LectureSchedule: "kyomu.LectureSchedule"
+      kyomu.Requirement: "kyomu.Requirement"
+      kyomu.StudentProfile: "kyomu.StudentProfile"
+      kyomu.Registration: "kyomu.Registration"
+      kyomu.Slot: "kyomu.Slot"
+      kyomu.Candidate: "kyomu.Candidate"
+      kyomu.Syllabus: "kyomu.Syllabus"
+      kyomu.SyllabusSummary: "kyomu.SyllabusSummary"
+      kyomu.Book: "kyomu.Book"
+      university.Document: "university.Document"
+      university.FusionRule: "university.FusionRule"
+      university.RequiredSubject: "university.RequiredSubject"
+      university.Source: "university.Source"
+      university.ThesisRule: "university.ThesisRule"
+      university.TimetableNote: "university.TimetableNote"
+      university.TimetableCorrection: "university.TimetableCorrection"
+      university.TimetableCourse: "university.TimetableCourse"
+      university.Passage: "university.Passage"
+      kyomu.CandidateScope: "kyomu.CandidateScope"
+  - path: "github.com/ieyoukan/daigaku-hack/internal/db"
+    output_path: "web/src/api/gen/db.ts"
+    include_files: ["plan.go", "categories.go", "tokens.go", "oauth.go"]
+    type_mappings:
+      time.Time: "string"
+  - path: "github.com/ieyoukan/daigaku-hack/internal/provider/webclass"
+    output_path: "web/src/api/gen/webclass.ts"
+    include_files: ["webclass.go", "contents.go", "messages.go"]
+    frontmatter: |
+      import type * as provider from "./provider"
+    type_mappings:
+      time.Time: "string"
+      provider.Course: "provider.Course"
+  - path: "github.com/ieyoukan/daigaku-hack/internal/provider"
+    output_path: "web/src/api/gen/provider.ts"
+    include_files: ["types.go"]
+    type_mappings:
+      time.Time: "string"
+  - path: "github.com/ieyoukan/daigaku-hack/internal/provider/kyomu"
+    output_path: "web/src/api/gen/kyomu.ts"
+    include_files: ["grades.go", "report.go", "student.go", "regist.go", "syllabus.go", "page.go", "schedule.go", "lecture_schedule.go"]
+    type_mappings:
+      time.Time: "string"
+  - path: "github.com/ieyoukan/daigaku-hack/internal/provider/university"
+    output_path: "web/src/api/gen/university.ts"
+    type_mappings:
+      time.Time: "string"

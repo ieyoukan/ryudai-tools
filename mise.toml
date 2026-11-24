@@ -1,0 +1,135 @@
+[tools]
+go = "1.25.0"
+bun = "1.4.3"
+
+[env]
+_.file = ".env"
+
+[tasks.dev]
+description = "開発サーバーを起動する"
+run = '''
+#!/usr/bin/env bash
+port="${PORT:-8080}"
+lsof -ti:"$port" | xargs kill 2>/dev/null || true
+go run ./cmd/ryudai-tools
+'''
+
+[tasks.web]
+description = "画面（web/）を型チェックしてビルドし、Go に埋め込む場所（internal/webapp/dist）に出力する"
+dir = "web"
+run = """
+bun install --frozen-lockfile
+bun run typecheck
+bun run build
+"""
+
+[tasks.web-dev]
+description = "画面の開発サーバー（/api などは mise run dev の :8080 に中継）"
+dir = "web"
+run = "bun install && bun run dev"
+
+[tasks.gen-types]
+description = "Go の構造体から画面用の TypeScript の型（web/src/api/gen）を作る"
+run = "go run github.com/gzuidhof/tygo@v0.2.21 generate"
+
+[tasks.check]
+description = "push・デプロイ前の確認（Go の vet とテスト、Go と画面の型のずれ、画面の型チェック）。CI もこれだけを実行する"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+go vet ./...
+go test ./...
+go run github.com/gzuidhof/tygo@v0.2.21 generate
+git diff --exit-code -- web/src/api/gen || { echo "web/src/api/gen が Go の構造体とずれています。生成し直した差分をコミットしてください" >&2; exit 1; }
+cd web
+bun install --frozen-lockfile
+bun run typecheck
+'''
+
+[tasks.smoke]
+description = "デプロイ後の確認: 公開 URL で、手元と同じ版が動き、ログインが必要な画面・API が守られ、画面のファイルが配信されているか"
+run = '''
+#!/usr/bin/env bash
+set -uo pipefail
+base="${BASE_URL:-http://127.0.0.1:8080}"
+want="${EXPECT_VERSION:-$(git describe --tags --always --dirty)}"
+fail=0
+ok() { printf '  \033[32mOK\033[0m  %s\n' "$1"; }
+ng() { printf '  \033[31mNG\033[0m  %s\n' "$1"; fail=1; }
+# expect <期待するステータス> <メソッド> <パス> [curl の引数...]
+expect() {
+  local code="$1" method="$2" path="$3"; shift 3
+  local got; got=$(curl -s -o /dev/null -m 20 -w '%{http_code}' -X "$method" "$@" "$base$path")
+  [ "$got" = "$code" ] && ok "$method $path → $got" || ng "$method $path → $got（期待 $code）"
+}
+echo "確認先: $base（期待する版: $want）"
+# 起動直後は少し待つ
+for i in $(seq 1 15); do curl -s -m 5 -o /dev/null "$base/api/health" && break; sleep 1; done
+got=$(curl -s -m 20 "$base/api/health" | sed -n 's/.*"version":"\([^"]*\)".*/\1/p')
+[ "$got" = "$want" ] && ok "版 $got" || ng "版 ${got:-（取得できず）}（期待 $want）"
+# 画面（どのページの URL も同じ index.html）
+expect 200 GET /login
+expect 200 GET /plan
+expect 200 GET /grades
+expect 200 GET /downloads
+expect 301 GET /app/plan
+expect 404 GET /no-such-page
+# ページのデータ: 未ログインはログイン画面への移動を JSON で返す
+for p in /courses /messages /registration /settings; do
+  body=$(curl -s -m 20 "$base/api/page$p")
+  case "$body" in *'"redirect":"/login"'*) ok "GET /api/page$p → ログイン画面へ";; *) ng "GET /api/page$p → $body";; esac
+done
+expect 200 GET /api/page/terms
+expect 403 POST /api/page/logout
+expect 401 GET /api/me/graduation
+expect 401 GET '/api/me/plan/suggestions?term=2027%E5%89%8D%E6%9C%9F'
+expect 401 POST /api/me/plan/items -H 'Content-Type: application/json' -d '{}'
+expect 401 DELETE /api/me/plan/items/1
+expect 401 PUT /api/me/lecture-categories -H 'Content-Type: application/json' -d '{}'
+expect 200 GET '/api/syllabus/search?subject=%E7%B7%9A%E5%BD%A2%E4%BB%A3%E6%95%B0&limit=1'
+expect 200 GET /brand/logo.svg
+expect 200 GET /favicon.svg
+# 手元でビルドした画面のファイルが、そのまま配信されているか
+assets=$(grep -o '/assets/[^"]*' internal/webapp/dist/index.html 2>/dev/null | sort -u)
+[ -n "$assets" ] || ng "internal/webapp/dist/index.html が無い（mise run web を先に実行）"
+for a in $assets; do expect 200 GET "$a"; done
+[ "$fail" = 0 ] && echo "すべて OK" || { echo "失敗した確認があります"; exit 1; }
+'''
+
+[tasks.install-hooks]
+description = "git push の前に mise run check を実行するフックを入れる"
+run = '''
+printf '#!/bin/sh\n# mise run install-hooks で入れたフック。止めたいときは git push --no-verify\nexec mise run check\n' > .git/hooks/pre-push
+chmod +x .git/hooks/pre-push
+echo "pre-push フックを入れました"
+'''
+
+[tasks.build]
+description = "ローカル用バイナリをビルドする"
+depends = ["web"]
+run = 'go build -o "${APP:-ryudai-tools}" ./cmd/ryudai-tools'
+
+[tasks.dist]
+description = "各 OS 向けの配布アーカイブと SHA-256 を dist/ に作る（GitHub Releases と同じビルド）"
+usage = 'arg "<tag>" help="リリースタグ（例: v0.2.0）"'
+run = 'bash scripts/build-release.sh "$usage_tag"'
+
+[tasks.debug]
+description = "WebClass スクレイパーを検証する"
+run = "go run ./cmd/debug"
+
+[tasks.kyomu]
+description = "教務システムのスクレイパーを検証する"
+run = "go run ./cmd/kyomu-debug"
+
+[tasks.test]
+description = "Go のテストと画面の型チェックを実行する"
+run = """
+go test ./...
+cd web && bun install --frozen-lockfile && bun run typecheck
+"""
+
+[tasks.test-live]
+description = "実際の教務システムに接続する結合テストを実行する"
+env = { KYOMU_LIVE = "1" }
+run = "go test ./internal/provider/kyomu/ -run Live -v"

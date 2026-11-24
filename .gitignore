@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+
+# Environment（.env.example はコミットして OK）
+.env
+.env.*
+!.env.example
+
+# Build（ルート直下のバイナリと、cmd/ 内で go build したバイナリ）
+/ryudai-tools
+/daigaku-hack
+cmd/*/ryudai-tools
+cmd/*/daigaku-hack
+/debug
+/daigaku-hack.exe
+*.exe
+
+# Downloads
+downloads/
+
+# SQLite DB（実行時に自動生成される）
+data/
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+pnpm-lock.yaml
+
+# ビルド成果物
+/dist/
+/build/
+
+# ブラウザでの動作確認（Playwright）の出力
+.playwright-mcp/
+
+# 画面（web/）のビルド結果。Go に埋め込むが、リポジトリには置かない
+internal/webapp/dist/*
+!internal/webapp/dist/.keep

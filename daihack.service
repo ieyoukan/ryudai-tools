@@ -1,0 +1,14 @@
+[Unit]
+Description=Ryudai Tools
+After=network.target
+
+[Service]
+Type=simple
+User=daihack
+EnvironmentFile=/etc/daihack.env
+ExecStart=/usr/local/bin/ryudai-tools
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
