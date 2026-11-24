@@ -34,6 +34,10 @@ type AcademicHandler struct {
 	Plans PlanWriter
 }
 
+type errorResponse struct {
+	Error string `json:"error"`
+}
+
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
@@ -129,7 +133,7 @@ func (h *AcademicHandler) Syllabus(w http.ResponseWriter, r *http.Request) {
 func (h *AcademicHandler) requireUser(w http.ResponseWriter, r *http.Request) string {
 	user := h.User(r)
 	if user == "" {
-		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "認証が必要です（Authorization: Bearer <トークン> または X-Session-ID）"})
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "認証が必要です（Authorization: Bearer <トークン> またはログイン中のブラウザ）"})
 	}
 	return user
 }

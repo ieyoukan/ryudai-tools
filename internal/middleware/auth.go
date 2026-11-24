@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"strings"
 
@@ -10,15 +9,8 @@ import (
 
 const sessionCookie = "ryudai_tools_session"
 
-type contextKey string
-
-const SessionKey contextKey = "session"
-
-// extractSessionID は X-Session-ID ヘッダーまたは Cookie からセッション ID を取得する。
+// extractSessionID はブラウザのログイン Cookie からセッション ID を取得する。
 func extractSessionID(r *http.Request) string {
-	if id := r.Header.Get("X-Session-ID"); id != "" {
-		return id
-	}
 	if c, err := r.Cookie(sessionCookie); err == nil {
 		return c.Value
 	}
@@ -48,34 +40,7 @@ func RefreshSession(store session.Store) func(http.Handler) http.Handler {
 	}
 }
 
-// RequireSession は API ルート用のミドルウェア。
-// X-Session-ID ヘッダーまたは Cookie でセッションを検証し、失敗時は 401 JSON を返す。
-func RequireSession(store session.Store) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			sessionID := extractSessionID(r)
-			if sessionID == "" {
-				http.Error(w, `{"error":"missing X-Session-ID header"}`, http.StatusUnauthorized)
-				return
-			}
 
-			entry, ok := store.Get(sessionID)
-			if !ok {
-				http.Error(w, `{"error":"invalid or expired session"}`, http.StatusUnauthorized)
-				return
-			}
-
-			ctx := context.WithValue(r.Context(), SessionKey, entry)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-
-// GetSession extracts the session entry from context.
-func GetSession(ctx context.Context) *session.Entry {
-	entry, _ := ctx.Value(SessionKey).(*session.Entry)
-	return entry
-}
 
 // TokenResolver は API トークンからユーザー名を引く（db.DB が実装）。
 type TokenResolver interface {
@@ -95,7 +60,7 @@ func BearerUser(r *http.Request, tokens TokenResolver) string {
 	return user
 }
 
-// RequestUser は API トークン、X-Session-ID ヘッダー、Cookie の順にユーザー名を解決する（未認証なら ""）。
+// RequestUser は API トークン、ログイン Cookie の順にユーザー名を解決する（未認証なら ""）。
 func RequestUser(r *http.Request, store session.Store, tokens TokenResolver) string {
 	if u := BearerUser(r, tokens); u != "" {
 		return u
@@ -108,7 +73,7 @@ func RequestUser(r *http.Request, store session.Store, tokens TokenResolver) str
 	return ""
 }
 
-// SessionUser はログインセッション（X-Session-ID ヘッダーまたは Cookie）だけからユーザー名を返す（無ければ ""）。
+// SessionUser はログインセッション（Cookie）だけからユーザー名を返す（無ければ ""）。
 // API トークンは読み取り専用なので、書き込みの API はこちらで認証する。
 func SessionUser(r *http.Request, store session.Store) string {
 	if id := extractSessionID(r); id != "" {

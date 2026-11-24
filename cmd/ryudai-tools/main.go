@@ -83,8 +83,6 @@ func main() {
 	}
 
 	// --- HTTP ハンドラー ---
-	apiAuth := &handler.AuthHandler{Config: cfg, SessionStore: store, Academic: academicSvc}
-	apiFiles := &handler.FilesHandler{Config: cfg}
 	apiAcademic := &handler.AcademicHandler{
 		Svc:         academicSvc,
 		User:        func(r *http.Request) string { return middleware.RequestUser(r, store, tokens) },
@@ -94,7 +92,6 @@ func main() {
 		apiAcademic.Plans = database
 	}
 	uiHandler := ui.NewHandler(cfg, store, database, academicSvc)
-	apiFiles.Client = uiHandler.WebClassClient
 
 	// --- OAuth（ChatGPT / claude.ai のアカウント連携） ---
 	var oauthSrv *oauth.Server
@@ -203,7 +200,7 @@ func main() {
 		r.Use(cors.Handler(cors.Options{
 			AllowedOrigins:   []string{"http://localhost:*", "http://127.0.0.1:*"},
 			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-			AllowedHeaders:   []string{"Accept", "Content-Type", "X-Session-ID", "Authorization"},
+			AllowedHeaders:   []string{"Accept", "Content-Type", "Authorization"},
 			ExposedHeaders:   []string{"Content-Disposition"},
 			AllowCredentials: true,
 			MaxAge:           300,
@@ -216,9 +213,6 @@ func main() {
 			json.NewEncoder(w).Encode(map[string]string{"status": "ok", "version": version})
 		})
 
-		r.Post("/api/auth/login", apiAuth.Login)
-		r.Post("/api/auth/logout", apiAuth.Logout)
-		r.Get("/api/auth/session", apiAuth.Session)
 
 		// 教務システム: シラバスは公開、/api/me は Bearer トークンまたはセッションで認証
 		r.Get("/api/academic/calendar", apiAcademic.Calendar)
@@ -241,13 +235,6 @@ func main() {
 		r.Delete("/api/me/plan/items/{id}", apiAcademic.DeletePlanItem)
 		r.Put("/api/me/lecture-categories", apiAcademic.SaveLectureCategories)
 
-		r.Group(func(r chi.Router) {
-			r.Use(middleware.RequireSession(store))
-			r.Get("/api/courses", apiFiles.ListCourses)
-			r.Get("/api/courses/{courseID}/contents", apiFiles.ListCourseContents)
-			r.Get("/api/courses/{courseID}/contents/{contentID}/files", apiFiles.ListContentFiles)
-			r.Get("/api/files/{courseID}/{fileID}", apiFiles.Download)
-		})
 	})
 
 	// 存在しないページ: 画面の「見つかりません」を出す（API は JSON の 404）
