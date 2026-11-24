@@ -51,7 +51,7 @@ mise run dev
 - `mise run check`: push・デプロイ前の確認（`go vet`、`go test`、Go の構造体と画面の型のずれ、画面の型チェック）。数秒〜十数秒
 - `mise run install-hooks`: `git push` の前に `mise run check` を実行するフックを入れる（クローンごとに 1 回）
 - `mise run dist -- v0.2.0`: GitHub Releases と同じ配布アーカイブを手元で作る
-- `mise run smoke`: 公開 URL（`BASE_URL` で変更可）で、手元と同じ版（`/api/health` の version）が動き、ログインが必要な画面・API が守られ、画面のファイルが配信されているかを確かめる
+- `mise run smoke`: `BASE_URL`（既定 `http://127.0.0.1:8080`）で、期待する版（`EXPECT_VERSION`。既定は手元の `git describe`）が動き、ログインが必要な画面・API が守られ、画面が読み込むファイルが配信されているかを確かめる。例: `BASE_URL=https://ryudai-tools.example.com EXPECT_VERSION=v0.2.0 mise run smoke`
 - GitHub Actions（`.github/workflows/ci.yml`）: main への push・pull request で `mise run check` を 1 回だけ実行する
 
 #### 画面（web/）
