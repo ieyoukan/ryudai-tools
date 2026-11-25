@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useParams } from 'wouter'
 
 import type { AttendanceRow, ContentsData } from '@/api/gen/ui'
-import { usePage } from '@/api/page'
+import { usePage, useRefreshFromWebClass } from '@/api/page'
+import { RefreshButton } from '@/components/RefreshButton'
 import { BackLink } from '@/components/BackLink'
 import { EmptyState, ErrorState, LoadingBlock, Notice, PageHeader, SectionTitle, formatDate } from '@/components/page'
 import { Badge } from '@/components/ui/badge'
@@ -43,6 +44,7 @@ export function CourseContents({ courseID, name }: { courseID: string; name: str
     enabled: !!data && !data.Error && (data.Contents ?? []).length > 0,
     staleTime: 5 * 60_000,
   })
+  const { refresh, refreshing } = useRefreshFromWebClass([contentsPath(courseID, name)], [{ url: `/courses/${encodeURIComponent(courseID)}/files.json`, queryKey: ['course-files', courseID] }])
   const byId = new Map((files.data ?? []).map((c) => [c.contentId, c.files]))
   const title = data?.CourseName || name || courseID
   const q = `?name=${encodeURIComponent(title)}`
@@ -57,7 +59,10 @@ export function CourseContents({ courseID, name }: { courseID: string; name: str
         <>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">WebClass: {title}</p>
-            <Button asChild variant="outline" size="sm"><a href={data.WebClassURL} target="_blank" rel="noopener"><ExternalLink />WebClass で開く</a></Button>
+            <div className="flex flex-wrap gap-2">
+              <RefreshButton onClick={refresh} refreshing={refreshing} />
+              <Button asChild variant="outline" size="sm"><a href={data.WebClassURL} target="_blank" rel="noopener"><ExternalLink />WebClass で開く</a></Button>
+            </div>
           </div>
           {data.AttendanceError ? (
             <Notice tone="warning">出席確認を取得できませんでした: {data.AttendanceError}</Notice>

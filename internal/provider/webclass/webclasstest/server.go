@@ -51,6 +51,7 @@ type Server struct {
 	mu       sync.Mutex
 	sessions map[string]*sessionState
 	logins   int
+	hits     map[string]int
 }
 
 type sessionState struct {
@@ -60,7 +61,7 @@ type sessionState struct {
 
 // New は利用者とコースを指定して偽の WebClass を作る。
 func New(users map[string]string, courses ...Course) *Server {
-	return &Server{Users: users, Courses: courses, sessions: map[string]*sessionState{}}
+	return &Server{Users: users, Courses: courses, sessions: map[string]*sessionState{}, hits: map[string]int{}}
 }
 
 // Start は httptest.Server で配信する。URL は WebClass のベース URL として使える。
@@ -73,6 +74,20 @@ func (s *Server) Logins() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.logins
+}
+
+// Hits はページを返した回数（"top": 時間割、"course": コースのページ、"attendance": 出席確認）。
+// キャッシュが効いて WebClass への取得が減っているかの検証に使う。
+func (s *Server) Hits(kind string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.hits[kind]
+}
+
+func (s *Server) hit(kind string) {
+	s.mu.Lock()
+	s.hits[kind]++
+	s.mu.Unlock()
 }
 
 // ExpireSessions はすべてのセッションを無効にする（WebClass 側のセッション切れを再現する）。
@@ -146,6 +161,7 @@ func (s *Server) session(r *http.Request) *sessionState {
 }
 
 func (s *Server) top(w http.ResponseWriter) {
+	s.hit("top")
 	var b strings.Builder
 	b.WriteString(`<html><head><title>WebClass</title></head><body><table class="schedule-table"><tr><th></th>`)
 	days := []string{"月", "火", "水", "木", "金", "土"}
@@ -185,9 +201,11 @@ func (s *Server) course(w http.ResponseWriter, path string, st *sessionState) {
 	current := st.current
 	s.mu.Unlock()
 	if action == "attendance" {
+		s.hit("attendance")
 		fmt.Fprintf(w, `<html><head><title>出席 - WebClass</title></head><body><a href="/webclass/course.php/%s/login">戻る</a></body></html>`, html.EscapeString(current))
 		return
 	}
+	s.hit("course")
 	course, ok := s.find(current)
 	if !ok {
 		fmt.Fprint(w, `<html><head><title>エラー - WebClass</title></head><body>コースが見つかりません</body></html>`)

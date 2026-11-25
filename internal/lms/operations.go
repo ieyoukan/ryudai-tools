@@ -8,15 +8,27 @@ import (
 	"github.com/ieyoukan/ryudai-tools/internal/session"
 )
 
-// Courses は時間割に載っている WebClass のコースを返す。
+// Courses は時間割に載っている WebClass のコースを返す（CoursesTTL の間はキャッシュ）。
 func (s *Service) Courses(ctx context.Context, entry *session.Entry) ([]webclass.CourseInfo, error) {
+	key := cacheKey(entry.Username)
+	use, err := s.useCache(ctx, entry)
+	if err != nil {
+		return nil, err
+	}
+	if v, ok := s.courses.get(key); ok && use {
+		return v, nil
+	}
 	var courses []webclass.CourseInfo
-	err := s.read(ctx, entry, func(c *webclass.Client) error {
+	err = s.read(ctx, entry, func(c *webclass.Client) error {
 		var err error
 		courses, err = c.FetchTimetable()
 		return err
 	})
-	return courses, err
+	if err != nil {
+		return nil, err
+	}
+	s.courses.set(key, courses)
+	return courses, nil
 }
 
 // CourseContents はコースの資料と出席確認。出席確認だけ取れなかったときは AttendanceErr に入れ、
@@ -28,15 +40,38 @@ type CourseContents struct {
 }
 
 // CourseContents はコースの資料（試験・レポート・アンケートは除く）と出席確認を返す。
-// コースのページが取れなかったときは、空の一覧ではなくエラーを返す。
+// 資料は MaterialsTTL、出席確認は AttendanceTTL の間キャッシュする。コースのページが取れなかったときは、
+// 空の一覧ではなくエラーを返す。
 func (s *Service) CourseContents(ctx context.Context, entry *session.Entry, courseID string) (*CourseContents, error) {
+	key := cacheKey(entry.Username, courseID)
 	res := &CourseContents{}
-	err := s.read(ctx, entry, func(c *webclass.Client) error {
-		var err error
-		if res.Materials, err = c.FetchCourseContents(courseID); err != nil {
-			return err
+	var haveMaterials, haveAttendance bool
+	use, err := s.useCache(ctx, entry)
+	if err != nil {
+		return nil, err
+	}
+	if use {
+		res.Materials, haveMaterials = s.materials.get(key)
+		res.Attendance, haveAttendance = s.attendance.get(key)
+	}
+	if haveMaterials && haveAttendance {
+		return res, nil
+	}
+	err = s.read(ctx, entry, func(c *webclass.Client) error {
+		if !haveMaterials {
+			m, err := c.FetchCourseContents(courseID)
+			if err != nil {
+				return err
+			}
+			res.Materials = m
+			s.materials.set(key, m)
 		}
-		res.Attendance, res.AttendanceErr = c.FetchAttendanceList(courseID)
+		if !haveAttendance {
+			res.Attendance, res.AttendanceErr = c.FetchAttendanceList(courseID)
+			if res.AttendanceErr == nil {
+				s.attendance.set(key, res.Attendance)
+			}
+		}
 		return nil
 	})
 	if err != nil {
@@ -45,18 +80,65 @@ func (s *Service) CourseContents(ctx context.Context, entry *session.Entry, cour
 	return res, nil
 }
 
-// ContentFiles は資料 1 件のファイルを返す。資料以外は開かずに webclass.ErrNotMaterial を返す。
+// ContentFiles は資料 1 件のファイルを返す（FilesTTL の間キャッシュ）。資料以外は開かずに
+// webclass.ErrNotMaterial を返す。
 func (s *Service) ContentFiles(ctx context.Context, entry *session.Entry, courseID, contentID string) ([]webclass.FileInfo, error) {
 	var files []webclass.FileInfo
 	err := s.read(ctx, entry, func(c *webclass.Client) error {
 		var err error
-		files, err = c.FetchContentFiles(courseID, contentID)
+		files, err = s.contentFilesWith(ctx, c, entry, courseID, contentID)
 		return err
 	})
 	return files, err
 }
 
-// Inbox は受信箱のメッセージ（自分が送ったものを除く）と、コースの自動通知を除いた未読数を返す。未読数が取れなくても一覧は返す。
+// CourseFilesWith はコースの資料と、資料ごとのファイル（ファイルの無い資料は含めない）を返す。
+// すでに Open した client で使う（まとめてダウンロードなど、取得の後もセッションを使い続ける処理向け）。
+func (s *Service) CourseFilesWith(ctx context.Context, c *webclass.Client, entry *session.Entry, courseID string) ([]webclass.ContentInfo, map[string][]webclass.FileInfo, error) {
+	key := cacheKey(entry.Username, courseID)
+	use, err := s.useCache(ctx, entry)
+	if err != nil {
+		return nil, nil, err
+	}
+	materials, ok := s.materials.get(key)
+	if !ok || !use {
+		var err error
+		if materials, err = c.FetchCourseContents(courseID); err != nil {
+			return nil, nil, err
+		}
+		s.materials.set(key, materials)
+	}
+	out := make(map[string][]webclass.FileInfo, len(materials))
+	for _, m := range materials {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, err
+		}
+		if files, _ := s.contentFilesWith(ctx, c, entry, courseID, m.ID); len(files) > 0 {
+			out[m.ID] = files
+		}
+	}
+	return materials, out, nil
+}
+
+func (s *Service) contentFilesWith(ctx context.Context, c *webclass.Client, entry *session.Entry, courseID, contentID string) ([]webclass.FileInfo, error) {
+	key := cacheKey(entry.Username, courseID, contentID)
+	use, err := s.useCache(ctx, entry)
+	if err != nil {
+		return nil, err
+	}
+	if v, ok := s.files.get(key); ok && use {
+		return v, nil
+	}
+	files, err := c.FetchContentFiles(courseID, contentID)
+	if err != nil {
+		return nil, err
+	}
+	s.files.set(key, files)
+	return files, nil
+}
+
+// Inbox は受信箱のメッセージ（自分が送ったものを除く）と、コースの自動通知を除いた未読数を返す。
+// 新着を見逃さないよう、受信箱はキャッシュしない。未読数が取れなくても一覧は返す。
 func (s *Service) Inbox(ctx context.Context, entry *session.Entry) ([]webclass.Message, int, error) {
 	var messages []webclass.Message
 	unread := 0
@@ -76,7 +158,7 @@ func Describe(what string, err error) string {
 	switch {
 	case err == nil:
 		return ""
-	case errors.Is(err, webclass.ErrSessionExpired), errors.Is(err, ErrNoPassword):
+	case errors.Is(err, webclass.ErrSessionExpired), errors.Is(err, ErrNoPassword), errors.Is(err, ErrSessionInvalid):
 		return "WebClass のログインが切れました。ログアウトしてもう一度ログインしてください。"
 	case errors.Is(err, context.DeadlineExceeded):
 		return what + "を取得できませんでした。WebClass の応答がありません。時間をおいてもう一度お試しください。"

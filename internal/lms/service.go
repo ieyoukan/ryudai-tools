@@ -44,6 +44,11 @@ type Service struct {
 
 	// ReadTimeout は Courses などの読み取りの上限（0 なら DefaultReadTimeout）。
 	ReadTimeout time.Duration
+
+	courses    *userCache[[]webclass.CourseInfo]
+	materials  *userCache[[]webclass.ContentInfo]
+	attendance *userCache[[]webclass.AttendanceItem]
+	files      *userCache[[]webclass.FileInfo]
 }
 
 type user struct {
@@ -56,7 +61,21 @@ func New(baseURL string, sessions Sessions, password func(username string) (stri
 	if password == nil {
 		password = func(string) (string, bool) { return "", false }
 	}
-	return &Service{baseURL: baseURL, sessions: sessions, password: password}
+	return &Service{
+		baseURL: baseURL, sessions: sessions, password: password,
+		courses:    newUserCache[[]webclass.CourseInfo](CoursesTTL),
+		materials:  newUserCache[[]webclass.ContentInfo](MaterialsTTL),
+		attendance: newUserCache[[]webclass.AttendanceItem](AttendanceTTL),
+		files:      newUserCache[[]webclass.FileInfo](FilesTTL),
+	}
+}
+
+// Forget は利用者のキャッシュをすべて消す（ログアウト時）。
+func (s *Service) Forget(username string) {
+	s.courses.forget(username)
+	s.materials.forget(username)
+	s.attendance.forget(username)
+	s.files.forget(username)
 }
 
 func (s *Service) user(username string) *user {

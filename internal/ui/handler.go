@@ -2,6 +2,7 @@ package ui
 
 import (
 	"archive/zip"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -155,6 +156,7 @@ func (h *Handler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie(sessionCookie); err == nil {
 		if entry, ok := h.store.Get(c.Value); ok {
 			h.academic.Forget(entry.Username)
+			h.lms.Forget(entry.Username)
 		}
 		h.store.Delete(c.Value)
 	}
@@ -167,6 +169,14 @@ func (h *Handler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
+// lmsContext は WebClass の取得に使う context。?refresh=1（画面の「最新にする」）ならキャッシュを使わない。
+func lmsContext(r *http.Request) context.Context {
+	if r.URL.Query().Get("refresh") == "1" {
+		return lms.Refresh(r.Context())
+	}
+	return r.Context()
+}
+
 // ShowCourses は GET /courses を処理する。
 func (h *Handler) ShowCourses(w http.ResponseWriter, r *http.Request) {
 	entry := h.sessionFromCookie(r)
@@ -176,7 +186,7 @@ func (h *Handler) ShowCourses(w http.ResponseWriter, r *http.Request) {
 	}
 
 	base := BaseData{Username: entry.Username}
-	courses, err := h.lms.Courses(r.Context(), entry)
+	courses, err := h.lms.Courses(lmsContext(r), entry)
 	if err != nil {
 		h.render(w, "courses", CoursesData{BaseData: base, Error: lms.Describe("コース一覧", err)})
 		return
@@ -205,7 +215,7 @@ func (h *Handler) ShowContents(w http.ResponseWriter, r *http.Request) {
 
 	// 資料は試験・レポート・アンケートを除いたもの。ファイルはページ描画をブロックしないよう、
 	// 遷移後に /files.json から取得する（CourseFilesJSON）。
-	cc, err := h.lms.CourseContents(r.Context(), entry, courseID)
+	cc, err := h.lms.CourseContents(lmsContext(r), entry, courseID)
 	if err != nil {
 		h.render(w, "contents", ContentsData{BaseData: base, CourseID: courseID, CourseName: courseName, WebClassURL: webClassCourseURL(courseID), Error: lms.Describe("資料の一覧", err)})
 		return
@@ -252,7 +262,7 @@ func (h *Handler) ShowFiles(w http.ResponseWriter, r *http.Request) {
 		ContentName: contentName,
 		WebClassURL: webClassCourseURL(courseID),
 	}
-	files, err := h.lms.ContentFiles(r.Context(), entry, courseID, contentID)
+	files, err := h.lms.ContentFiles(lmsContext(r), entry, courseID, contentID)
 	if err != nil {
 		data.Error = lms.Describe("ファイルの一覧", err)
 	}
@@ -365,13 +375,11 @@ func (h *Handler) DownloadCourseZip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	contents, err := client.FetchCourseContents(courseID)
+	contents, fileMap, err := h.lms.CourseFilesWith(lmsContext(r), client, entry, courseID)
 	if err != nil {
-		http.Error(w, "コンテンツ一覧の取得に失敗しました: "+err.Error(), http.StatusBadGateway)
+		http.Error(w, lms.Describe("資料の一覧", err), http.StatusBadGateway)
 		return
 	}
-
-	fileMap := fetchCourseFilesSeq(client, courseID, contents)
 
 	// ファイルが1件もなければエラー
 	totalFiles := 0
@@ -421,20 +429,6 @@ func (h *Handler) DownloadCourseZip(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// fetchCourseFilesSeq はコース内全コンテンツのファイルを逐次取得する。
-// do_contents.php?reset_status=1 はサーバー側の「現在のコンテンツ」状態を変えるため、
-// 並列化すると show_info 経由の多段フロー（ミーティング等）が互いに壊れる。
-// そのため逐次で取得して確実に全ファイルを集める。
-func fetchCourseFilesSeq(client *webclass.Client, courseID string, contents []webclass.ContentInfo) map[string][]webclass.FileInfo {
-	out := make(map[string][]webclass.FileInfo, len(contents))
-	for _, c := range contents {
-		if files, _ := client.FetchContentFiles(courseID, c.ID); len(files) > 0 {
-			out[c.ID] = files
-		}
-	}
-	return out
-}
-
 // CourseFilesJSON は GET /courses/{courseID}/files.json を処理する。
 // ページ遷移後にフロントから呼ばれ、全コンテンツのファイルを逐次取得して返す。
 func (h *Handler) CourseFilesJSON(w http.ResponseWriter, r *http.Request) {
@@ -452,13 +446,11 @@ func (h *Handler) CourseFilesJSON(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	contents, err := client.FetchCourseContents(courseID)
+	contents, fileMap, err := h.lms.CourseFilesWith(lmsContext(r), client, entry, courseID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, lms.Describe("資料の一覧", err), http.StatusBadGateway)
 		return
 	}
-
-	fileMap := fetchCourseFilesSeq(client, courseID, contents)
 
 	type fileJSON struct {
 		Name        string `json:"name"`
@@ -511,13 +503,11 @@ func (h *Handler) CourseSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	contents, err := client.FetchCourseContents(courseID)
+	contents, fileMap, err := h.lms.CourseFilesWith(lmsContext(r), client, entry, courseID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, lms.Describe("資料の一覧", err), http.StatusBadGateway)
 		return
 	}
-
-	fileMap := fetchCourseFilesSeq(client, courseID, contents)
 
 	type summaryFile struct {
 		Name string `json:"name"`

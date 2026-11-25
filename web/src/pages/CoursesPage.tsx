@@ -3,7 +3,8 @@ import { useState } from 'react'
 import { Link } from 'wouter'
 
 import type { CoursesData } from '@/api/gen/ui'
-import { usePage } from '@/api/page'
+import { usePage, useRefreshFromWebClass } from '@/api/page'
+import { RefreshButton } from '@/components/RefreshButton'
 import { EmptyState, ErrorState, LoadingBlock, PageHeader } from '@/components/page'
 import { cn } from '@/lib/utils'
 import { ScheduleCalendar } from './ScheduleCalendar'
@@ -42,11 +43,15 @@ export function CoursesPage() {
 
 function WebClassTimetable() {
   const { data, error, isPending, refetch } = usePage<CoursesData>('/courses')
+  const { refresh, refreshing } = useRefreshFromWebClass(['/courses'])
   const [todayIdx] = useState(() => new Date().getDay() - 1) // 月=0
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">WebClass のコースです。押すと資料と出席確認を見られます。</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">WebClass のコースです。押すと資料と出席確認を見られます。</p>
+        <RefreshButton onClick={refresh} refreshing={refreshing} />
+      </div>
       {isPending && <LoadingBlock />}
       {error && <ErrorState message={error.message} onRetry={() => refetch()} />}
       {data?.Error && <ErrorState message={data.Error} onRetry={() => refetch()} />}

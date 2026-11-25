@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { navigate } from 'wouter/use-browser-location'
 
 import { ApiError } from './client'
@@ -81,4 +82,30 @@ export function useRegistrationStatus(enabled: boolean) {
 export function useInvalidatePages() {
   const qc = useQueryClient()
   return () => qc.invalidateQueries({ queryKey: ['page'] })
+}
+
+/**
+ * WebClass の結果をサーバーのキャッシュを使わずに取り直す（画面の「最新にする」）。
+ * pagePaths はページのデータ、urls はそのほかの JSON（files.json など）。取り直した後、表示中のデータを更新する。
+ */
+export function useRefreshFromWebClass(pagePaths: string[], urls: { url: string; queryKey: unknown[] }[] = []) {
+  const qc = useQueryClient()
+  const [refreshing, setRefreshing] = useState(false)
+  const refresh = async () => {
+    setRefreshing(true)
+    try {
+      const withRefresh = (p: string) => p + (p.includes('?') ? '&' : '?') + 'refresh=1'
+      await Promise.all([
+        ...pagePaths.map((p) => fetch('/api/page' + withRefresh(p), { credentials: 'same-origin', headers: { Accept: 'application/json' } })),
+        ...urls.map((u) => fetch(withRefresh(u.url), { credentials: 'same-origin' })),
+      ])
+      await Promise.all([
+        ...pagePaths.map((p) => qc.invalidateQueries({ queryKey: ['page', p] })),
+        ...urls.map((u) => qc.invalidateQueries({ queryKey: u.queryKey })),
+      ])
+    } finally {
+      setRefreshing(false)
+    }
+  }
+  return { refresh, refreshing }
 }
