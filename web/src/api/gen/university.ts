@@ -48,7 +48,16 @@ export interface Document {
   url: string;
   kind: string;
 }
+/**
+ * PublicStore は公開情報の保存先（db.DB が実装）。取得した公式資料を再起動後も使い、
+ * 次の取得は ETag / Last-Modified の条件付きで行って、変わっていなければ本文を取り直さない。
+ */
+export type PublicStore = any;
 export interface Client {
+  /**
+   * Store があれば、取得した公式資料を保存して共有する（nil ならメモリだけ）。
+   */
+  Store: PublicStore;
   HTTP?: any /* http.Client */;
 }
 

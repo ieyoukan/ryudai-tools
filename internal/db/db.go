@@ -150,6 +150,15 @@ func (db *DB) migrate() error {
 		);
 		CREATE INDEX IF NOT EXISTS oauth_tokens_grant ON oauth_tokens (grant_id);
 
+		-- 公開情報（シラバス・学年暦・時間割や便覧の公式資料）の取得結果。全員で共有し、個人の情報は入れない。
+		CREATE TABLE IF NOT EXISTS public_cache (
+			key           TEXT PRIMARY KEY,
+			value         BLOB NOT NULL,
+			etag          TEXT NOT NULL DEFAULT '',
+			last_modified TEXT NOT NULL DEFAULT '',
+			fetched_at    INTEGER NOT NULL
+		);
+
 		-- 旧版で使っていたテーブル（保存していた認証情報など）が残っていれば消す。
 		DROP TABLE IF EXISTS users;
 		DROP TABLE IF EXISTS settings;

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -36,12 +37,26 @@ type Document struct {
 }
 
 type cachedBody struct {
-	data    []byte
-	source  Source
-	retryAt time.Time
+	data         []byte
+	source       Source
+	retryAt      time.Time
+	etag         string
+	lastModified string
 }
 
+// PublicStore は公開情報の保存先（db.DB が実装）。取得した公式資料を再起動後も使い、
+// 次の取得は ETag / Last-Modified の条件付きで行って、変わっていなければ本文を取り直さない。
+type PublicStore interface {
+	LoadPublic(key string) (value []byte, etag, lastModified string, fetchedAt time.Time, ok bool)
+	SavePublic(key string, value []byte, etag, lastModified string) error
+}
+
+// refreshAfter は公式資料を取り直すまでの間隔。取り直しは条件付きなので、変わっていなければ軽い。
+const refreshAfter = 24 * time.Hour
+
 type Client struct {
+	// Store があれば、取得した公式資料を保存して共有する（nil ならメモリだけ）。
+	Store   PublicStore
 	HTTP    *http.Client
 	mu      sync.Mutex
 	cache   map[string]cachedBody
@@ -90,6 +105,14 @@ func (c *Client) fetch(ctx context.Context, rawURL string) ([]byte, Source, erro
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	old, ok := c.cache[rawURL]
+	if !ok && c.Store != nil {
+		// 再起動後など、メモリに無ければ保存した内容を使う。
+		if data, etag, lm, at, found := c.Store.LoadPublic(storeKey(rawURL)); found {
+			old = cachedBody{data: data, source: Source{URL: rawURL, FetchedAt: at.UTC()}, retryAt: at.Add(refreshAfter), etag: etag, lastModified: lm}
+			ok = true
+			c.cache[rawURL] = old
+		}
+	}
 	if ok && time.Now().Before(old.retryAt) {
 		return old.data, old.source, nil
 	}
@@ -98,12 +121,27 @@ func (c *Client) fetch(ctx context.Context, rawURL string) ([]byte, Source, erro
 		return nil, Source{}, err
 	}
 	req.Header.Set("User-Agent", "ryudai-tools/academic-info")
+	if ok {
+		// 前回の内容があれば条件付きで取得し、変わっていなければ 304 で本文を受け取らない。
+		if old.etag != "" {
+			req.Header.Set("If-None-Match", old.etag)
+		}
+		if old.lastModified != "" {
+			req.Header.Set("If-Modified-Since", old.lastModified)
+		}
+	}
 	resp, err := c.HTTP.Do(req)
 	var data []byte
 	if err == nil {
 		defer resp.Body.Close()
 		if _, e := officialURL(resp.Request.URL.String(), resp.Request.URL.String()); e != nil {
 			err = e
+		} else if ok && resp.StatusCode == http.StatusNotModified {
+			old.source = Source{URL: rawURL, FetchedAt: time.Now().UTC()}
+			old.retryAt = time.Now().Add(refreshAfter)
+			c.cache[rawURL] = old
+			c.save(rawURL, old)
+			return old.data, old.source, nil
 		} else if resp.StatusCode != http.StatusOK {
 			err = fmt.Errorf("公式資料の取得: HTTP %d", resp.StatusCode)
 		} else {
@@ -145,8 +183,22 @@ func (c *Client) fetch(ctx context.Context, rawURL string) ([]byte, Source, erro
 		total -= len(c.cache[key].data)
 		delete(c.cache, key)
 	}
-	c.cache[rawURL] = cachedBody{data: data, source: src, retryAt: time.Now().Add(24 * time.Hour)}
+	body := cachedBody{data: data, source: src, retryAt: time.Now().Add(refreshAfter), etag: resp.Header.Get("ETag"), lastModified: resp.Header.Get("Last-Modified")}
+	c.cache[rawURL] = body
+	c.save(rawURL, body)
 	return data, src, nil
+}
+
+func storeKey(rawURL string) string { return "official:" + rawURL }
+
+// save は取得した公式資料を保存先に書く（失敗しても取得結果はそのまま使う）。
+func (c *Client) save(rawURL string, b cachedBody) {
+	if c.Store == nil {
+		return
+	}
+	if err := c.Store.SavePublic(storeKey(rawURL), b.data, b.etag, b.lastModified); err != nil {
+		log.Printf("公式資料の保存に失敗: %v", err)
+	}
 }
 
 func walk(n *html.Node, f func(*html.Node)) {

@@ -184,3 +184,30 @@ func TestOpenWipesDroppedCredentialRemnants(t *testing.T) {
 		}
 	}
 }
+
+func TestPublicCache(t *testing.T) {
+	database, err := Open(filepath.Join(t.TempDir(), "app.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer database.Close()
+	if _, _, _, _, ok := database.LoadPublic("syllabus/2026/990000001"); ok {
+		t.Fatal("empty cache returned a value")
+	}
+	if err := database.SavePublic("syllabus/2026/990000001", []byte(`{"title":"試験"}`), `"v1"`, "Mon, 01 Jun 2026 00:00:00 GMT"); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.SavePublic("syllabus/2026/990000001", []byte(`{"title":"試験2"}`), `"v2"`, ""); err != nil {
+		t.Fatal(err)
+	}
+	v, etag, lm, at, ok := database.LoadPublic("syllabus/2026/990000001")
+	if !ok || string(v) != `{"title":"試験2"}` || etag != `"v2"` || lm != "" || time.Since(at) > time.Minute {
+		t.Fatalf("got %q %q %q %v %v", v, etag, lm, at, ok)
+	}
+	if err := database.PurgePublic(-time.Hour); err != nil { // 未来より前 = すべて
+		t.Fatal(err)
+	}
+	if _, _, _, _, ok := database.LoadPublic("syllabus/2026/990000001"); ok {
+		t.Fatal("purged entry remains")
+	}
+}

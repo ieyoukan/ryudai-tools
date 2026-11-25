@@ -98,6 +98,11 @@ func (s *Service) Syllabus(year int, code string) (*kyomu.Syllabus, error) {
 	if v, ok := s.syllabusCache.get(key); ok {
 		return v, nil
 	}
+	var stored kyomu.Syllabus
+	if s.loadPublic("syllabus/"+key, &stored) {
+		s.syllabusCache.set(key, &stored)
+		return &stored, nil
+	}
 	release := s.acquire()
 	defer release()
 	// 詳細ページは初回アクセスでセッションを張るので、並列取得のため毎回新しいクライアントを使う。
@@ -110,6 +115,7 @@ func (s *Service) Syllabus(year int, code string) (*kyomu.Syllabus, error) {
 		return nil, err
 	}
 	s.syllabusCache.set(key, v)
+	s.savePublic("syllabus/"+key, v)
 	return v, nil
 }
 
@@ -117,6 +123,11 @@ func (s *Service) Syllabus(year int, code string) (*kyomu.Syllabus, error) {
 func (s *Service) SyllabusOptions(faculty string) (*kyomu.SearchOptions, error) {
 	if v, ok := s.optionsCache.get(faculty); ok {
 		return v, nil
+	}
+	var stored kyomu.SearchOptions
+	if s.loadPublic("syllabus-options/"+faculty, &stored) {
+		s.optionsCache.set(faculty, &stored)
+		return &stored, nil
 	}
 	release := s.acquire()
 	defer release()
@@ -129,6 +140,7 @@ func (s *Service) SyllabusOptions(faculty string) (*kyomu.SearchOptions, error) 
 		return nil, err
 	}
 	s.optionsCache.set(faculty, v)
+	s.savePublic("syllabus-options/"+faculty, v)
 	return v, nil
 }
 

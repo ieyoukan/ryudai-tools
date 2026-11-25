@@ -81,6 +81,8 @@ func main() {
 		academicSvc.Cookies = database
 		academicSvc.Plans = database
 		academicSvc.Categories = database
+		// シラバスや大学の公式資料など公開情報は保存して共有し、再起動後も大学側へ取り直さずに使う。
+		academicSvc.UsePublicStore(database)
 	}
 
 	// --- HTTP ハンドラー ---
@@ -113,6 +115,9 @@ func main() {
 				case <-ticker.C:
 					if err := database.PurgeExpiredOAuth(); err != nil {
 						log.Printf("期限切れ OAuth データの削除に失敗: %v", err)
+					}
+					if err := database.PurgePublic(30 * 24 * time.Hour); err != nil {
+						log.Printf("古い公開情報の削除に失敗: %v", err)
 					}
 				}
 			}

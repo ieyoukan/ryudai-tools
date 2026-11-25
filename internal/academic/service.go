@@ -59,6 +59,9 @@ type Service struct {
 	// Categories を設定すると、履修登録の期間後も今期の登録科目の区分を使える（期間中に見えた区分・利用者が選んだ区分）。
 	Categories CategoryStore
 
+	// Public を設定すると、シラバスなどの公開情報を保存して全員で共有し、再起動後も使う（UsePublicStore で設定）。
+	Public university.PublicStore
+
 	// Cookies を設定すると教務システムの Cookie を再起動後も使える。
 	// 自動再ログインできないユーザーは、この Cookie が切れるまで教務システムの機能を使える。
 	Cookies CookieStore
@@ -256,4 +259,12 @@ func (s *Service) planItems(username string) []db.PlanItem {
 		return nil
 	}
 	return items
+}
+
+// UsePublicStore は公開情報（シラバス・検索の選択肢・大学の公式資料）の保存先を設定する。
+func (s *Service) UsePublicStore(store university.PublicStore) {
+	s.Public = store
+	if s.University != nil {
+		s.University.Store = store
+	}
 }
