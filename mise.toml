@@ -95,6 +95,9 @@ expect 200 GET /login
 expect 200 GET /plan
 expect 200 GET /grades
 expect 200 GET /downloads
+expect 200 GET /robots.txt
+expect 200 GET /sitemap.xml
+curl -s -m 20 "$base/login" | grep -q '<meta name="description"' && ok "GET /login に検索向けの説明（meta description）" || ng "GET /login に meta description が無い"
 expect 301 GET /app/plan
 expect 404 GET /no-such-page
 # ページのデータ: 未ログインはログイン画面への移動を JSON で返す

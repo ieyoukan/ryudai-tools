@@ -49,7 +49,8 @@ export default function App() {
   const [path] = useLocation()
   useEffect(() => {
     const t = titles.find(([re]) => re.test(path))?.[1]
-    document.title = t ? `${t} - Ryudai Tools` : 'Ryudai Tools'
+    // ログイン画面はサイトの入口なので、サーバーが入れる検索向けのタイトル（internal/seo）とそろえる
+    document.title = path.startsWith('/login') ? 'Ryudai Tools - 琉大生のための非公式の大学生活支援ツール' : t ? `${t} - Ryudai Tools` : 'Ryudai Tools'
     window.scrollTo(0, 0)
   }, [path])
 

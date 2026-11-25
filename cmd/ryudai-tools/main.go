@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"os/signal"
@@ -24,6 +25,7 @@ import (
 	"github.com/ieyoukan/ryudai-tools/internal/middleware"
 	"github.com/ieyoukan/ryudai-tools/internal/oauth"
 	"github.com/ieyoukan/ryudai-tools/internal/routes"
+	"github.com/ieyoukan/ryudai-tools/internal/seo"
 	"github.com/ieyoukan/ryudai-tools/internal/session"
 	"github.com/ieyoukan/ryudai-tools/internal/ui"
 	"github.com/ieyoukan/ryudai-tools/internal/webapp"
@@ -151,16 +153,36 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(chimw.Logger)
 	r.Use(chimw.Recoverer)
+	// HEAD は GET と同じに扱う（検索エンジンやリンクの確認ツールが HEAD を使うため）
+	r.Use(chimw.GetHead)
 	r.Use(chimw.RealIP)
 	r.Use(middleware.RedirectLegacyHosts(cfg.PublicBaseURL, cfg.LegacyHosts))
 	r.Use(middleware.RefreshSession(store))
 
 	// 画面（web/ の React をビルドしてバイナリに埋め込んだもの）。ページの URL にはどれも index.html を返し、
 	// 中身は画面が /api/page/...（ページのデータ）と /api/me/...（教務システム）から読む。
+	// ログイン中なら時間割へ、そうでなければ紹介を兼ねたログイン画面へ（検索エンジンもこちらを見る）。
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/courses", http.StatusSeeOther)
+		to := "/login"
+		if uiHandler.CurrentUser(r) != "" {
+			to = "/courses"
+		}
+		http.Redirect(w, r, to, http.StatusSeeOther)
 	})
-	page := webapp.Index()
+	// 検索エンジン向け: ページごとのタイトル・説明・OGP と、robots.txt・sitemap.xml。
+	head := func(r *http.Request) (string, bool) {
+		p := seo.ForPath(r.URL.Path)
+		return seo.Head(p, seo.BaseURL(r, cfg.PublicBaseURL), r.URL.Path), !p.Index
+	}
+	r.Get("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		io.WriteString(w, seo.RobotsTxt(seo.BaseURL(r, cfg.PublicBaseURL)))
+	})
+	r.Get("/sitemap.xml", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/xml; charset=utf-8")
+		io.WriteString(w, seo.SitemapXML(seo.BaseURL(r, cfg.PublicBaseURL)))
+	})
+	page := webapp.Index(head)
 	for _, p := range []string{
 		"/login", "/terms", "/privacy", "/downloads",
 		"/courses", "/courses/{courseID}", "/courses/{courseID}/contents/{contentID}", "/messages", "/settings",
@@ -227,7 +249,7 @@ func main() {
 			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
 			return
 		}
-		webapp.NotFound().ServeHTTP(w, req)
+		webapp.NotFound(head).ServeHTTP(w, req)
 	})
 
 	log.Printf("Ryudai Tools starting on :%s", cfg.Port)
